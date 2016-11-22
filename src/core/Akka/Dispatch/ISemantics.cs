@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="ISemantics.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -39,7 +39,7 @@ namespace Akka.Dispatch
         /// <summary> 
         /// The enqueue time to wait until message is dropped to deadletters if the message queue is full 
         /// </summary>
-        TimeSpan PushTimeOut { get; set; }
+        TimeSpan PushTimeOut { get; }
     }
 
     /// <summary> 
@@ -73,7 +73,7 @@ namespace Akka.Dispatch
     /// Semantics for message queues that are Double-Ended and bounded
     /// </summary>
     public interface IBoundedDequeBasedMessageQueueSemantics : IDequeBasedMessageQueueSemantics,
-        IUnboundedMessageQueueSemantics //TODO: make this Bounded once we have BoundedMessageQueues
+        IBoundedMessageQueueSemantics
     {
     }
 }

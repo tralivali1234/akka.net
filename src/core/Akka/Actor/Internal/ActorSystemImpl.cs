@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="ActorSystemImpl.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -15,6 +15,8 @@ using Akka.Configuration;
 using Akka.Dispatch;
 using Akka.Dispatch.SysMsg;
 using Akka.Event;
+using Akka.Serialization;
+using Akka.Util;
 
 
 namespace Akka.Actor.Internal
@@ -37,25 +39,38 @@ namespace Akka.Actor.Internal
         private Mailboxes _mailboxes;
         private IScheduler _scheduler;
         private ActorProducerPipelineResolver _actorProducerPipelineResolver;
+        private TerminationCallbacks _terminationCallbacks;
 
         public ActorSystemImpl(string name)
             : this(name, ConfigurationFactory.Load())
         {
         }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActorSystemImpl"/> class.
+        /// </summary>
+        /// <param name="name">The name given to the actor system.</param>
+        /// <param name="config">The configuration used to configure the actor system.</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown if the given <paramref name="name"/> is an invalid name for an actor system.
+        ///  Note that the name must contain only word characters (i.e. [a-zA-Z0-9] plus non-leading '-').
+        /// </exception>
+        /// <exception cref="ArgumentNullException">This exception is thrown if the given <paramref name="config"/> is undefined.</exception>
         public ActorSystemImpl(string name, Config config)
         {
             if(!Regex.Match(name, "^[a-zA-Z0-9][a-zA-Z0-9-]*$").Success)
                 throw new ArgumentException(
-                    "invalid ActorSystem name [" + name +
-                    "], must contain only word characters (i.e. [a-zA-Z0-9] plus non-leading '-')");
+                    $"Invalid ActorSystem name [{name}], must contain only word characters (i.e. [a-zA-Z0-9] plus non-leading '-')");
             if(config == null)
-                throw new ArgumentNullException("config");
+                throw new ArgumentNullException(nameof(config), "Configuration must not be null.");
 
             _name = name;            
             ConfigureSettings(config);
             ConfigureEventStream();
-            ConfigureProvider();
+            ConfigureLoggers();
             ConfigureScheduler();
+            ConfigureProvider();
+            ConfigureTerminationCallbacks();
             ConfigureSerialization();
             ConfigureMailboxes();
             ConfigureDispatchers();
@@ -63,6 +78,7 @@ namespace Akka.Actor.Internal
         }
 
         public override IActorRefProvider Provider { get { return _provider; } }
+        
         public override Settings Settings { get { return _settings; } }
         public override string Name { get { return _name; } }
         public override Serialization.Serialization Serialization { get { return _serialization; } }
@@ -77,43 +93,87 @@ namespace Akka.Actor.Internal
 
 
         public override IInternalActorRef Guardian { get { return _provider.Guardian; } }
+        public override IInternalActorRef LookupRoot => _provider.RootGuardian;
         public override IInternalActorRef SystemGuardian { get { return _provider.SystemGuardian; } }
 
 
         /// <summary>Creates a new system actor.</summary>
         public override IActorRef SystemActorOf(Props props, string name = null)
         {
-            return _provider.SystemGuardian.Cell.ActorOf(props, name: name);
+            return _provider.SystemGuardian.Cell.AttachChild(props, true, name);
         }
 
         /// <summary>Creates a new system actor.</summary>
         public override IActorRef SystemActorOf<TActor>(string name = null)
         {
-            return _provider.SystemGuardian.Cell.ActorOf<TActor>(name);
+            return _provider.SystemGuardian.Cell.AttachChild(Props.Create<TActor>(), true, name);
+        }
+
+        internal volatile bool Aborting = false;
+
+        public override void Abort()
+        {
+            Aborting = true;
+            Terminate();
         }
 
         /// <summary>Starts this system</summary>
         public void Start()
         {
-            _provider.Init(this);
-            ConfigureLoggers();
-            LoadExtensions();
-
-            if(_settings.LogDeadLetters > 0)
-                _logDeadLetterListener = SystemActorOf<DeadLetterListener>("deadLetterListener");
-
-            _eventStream.StartUnsubscriber(this);
-
-
-            if (_settings.LogConfigOnStart)
+            try
             {
-                _log.Warning(Settings.ToString());
+                RegisterOnTermination(StopScheduler);
+                _provider.Init(this);
+                LoadExtensions();
+
+                if (_settings.LogDeadLetters > 0)
+                    _logDeadLetterListener = SystemActorOf<DeadLetterListener>("deadLetterListener");
+
+                _eventStream.StartUnsubscriber(this);
+
+                WarnIfJsonIsDefaultSerializer();
+
+                if (_settings.LogConfigOnStart)
+                {
+                    _log.Info(Settings.ToString());
+                }
+            }
+            catch (Exception)
+            {
+                try
+                {
+                    Terminate();
+                }
+                catch (Exception)
+                {
+                    try { StopScheduler();}
+                    catch
+                    {
+                        // ignored
+                    }
+                }
+                throw;
+            }
+        }
+
+        private void WarnIfJsonIsDefaultSerializer()
+        {
+            const string configPath = "akka.suppress-json-serializer-warning";
+            var showSerializerWarning = Settings.Config.HasPath(configPath) && !Settings.Config.GetBoolean(configPath);
+
+            if (showSerializerWarning &&
+                Serialization.FindSerializerForType(typeof (object)) is NewtonSoftJsonSerializer)
+            {
+                Log.Warning($"NewtonSoftJsonSerializer has been detected as a default serializer. " +
+                            $"It will be obsoleted in Akka.NET starting from version 1.5 in the favor of Wire " +
+                            $"(for more info visit: http://getakka.net/docs/Serialization#how-to-setup-wire-as-default-serializer ). " +
+                            $"If you want to suppress this message set HOCON `{configPath}` config flag to on.");
             }
         }
 
         public override IActorRef ActorOf(Props props, string name = null)
         {
-            return _provider.Guardian.Cell.ActorOf(props, name: name);
+            return _provider.Guardian.Cell.AttachChild(props, false, name);
         }
 
 
@@ -130,7 +190,13 @@ namespace Akka.Actor.Internal
         private void ConfigureScheduler()
         {
             var schedulerType = Type.GetType(_settings.SchedulerClass, true);
-            _scheduler = (IScheduler) Activator.CreateInstance(schedulerType, this);
+            _scheduler = (IScheduler) Activator.CreateInstance(schedulerType, _settings.Config, Log);
+        }
+
+        private void StopScheduler()
+        {
+            var sched = Scheduler as IDisposable;
+            sched?.Dispose();
         }
 
         /// <summary>
@@ -174,10 +240,8 @@ namespace Akka.Actor.Internal
         public override object RegisterExtension(IExtensionId extension)
         {
             if(extension == null) return null;
-            if(!_extensions.ContainsKey(extension.ExtensionType))
-            {
-                _extensions.TryAdd(extension.ExtensionType, new Lazy<object>(() => extension.CreateExtension(this)));
-            }
+
+            _extensions.GetOrAdd(extension.ExtensionType, t => new Lazy<object>(() => extension.CreateExtension(this), LazyThreadSafetyMode.ExecutionAndPublication));
 
             return extension.Get(this);
         }
@@ -265,10 +329,23 @@ namespace Akka.Actor.Internal
         /// </summary>
         private void ConfigureProvider()
         {
-            Type providerType = Type.GetType(_settings.ProviderClass);
-            global::System.Diagnostics.Debug.Assert(providerType != null, "providerType != null");
-            var provider = (IActorRefProvider)Activator.CreateInstance(providerType, _name, _settings, _eventStream);
-            _provider = provider;
+            try
+            {
+                Type providerType = Type.GetType(_settings.ProviderClass);
+                global::System.Diagnostics.Debug.Assert(providerType != null, "providerType != null");
+                var provider =
+                    (IActorRefProvider) Activator.CreateInstance(providerType, _name, _settings, _eventStream);
+                _provider = provider;
+            }
+            catch (Exception)
+            {
+                try { StopScheduler(); }
+                catch
+                {
+                    // ignored
+                }
+                throw;
+            }
         }
 
         /// <summary>
@@ -297,34 +374,76 @@ namespace Akka.Actor.Internal
         }
 
         /// <summary>
+        /// Configures the termination callbacks.
+        /// </summary>
+        private void ConfigureTerminationCallbacks()
+        {
+            _terminationCallbacks = new TerminationCallbacks(Provider.TerminationTask);
+        }
+
+        /// <summary>
+        /// Register a block of code (callback) to run after ActorSystem.shutdown has been issued and
+        /// all actors in this actor system have been stopped.
+        /// Multiple code blocks may be registered by calling this method multiple times.
+        /// The callbacks will be run sequentially in reverse order of registration, i.e.
+        /// last registration is run first.
+        /// </summary>
+        /// <param name="code">The code to run</param>
+        /// <exception cref="Exception">Thrown if the System has already shut down or if shutdown has been initiated.</exception>
+        public override void RegisterOnTermination(Action code)
+        {
+            _terminationCallbacks.Add(code);
+        }
+
+        /// <summary>
         ///     Stop this actor system. This will stop the guardian actor, which in turn
         ///     will recursively stop all its child actors, then the system guardian
         ///     (below which the logging actors reside) and the execute all registered
         ///     termination handlers (<see cref="ActorSystem.RegisterOnTermination" />).
         /// </summary>
+        [Obsolete("Use Terminate instead. This method will be removed in future versions")]
         public override void Shutdown()
+        {
+            Terminate();
+        }
+
+        /// <summary>
+        /// Terminates this actor system. This will stop the guardian actor, which in turn
+        /// will recursively stop all its child actors, then the system guardian
+        /// (below which the logging actors reside) and the execute all registered
+        /// termination handlers (<see cref="ActorSystem.RegisterOnTermination" />).
+        /// Be careful to not schedule any operations on completion of the returned task
+        /// using the `dispatcher` of this actor system as it will have been shut down before the
+        /// task completes.
+        /// </summary>
+        public override Task Terminate()
         {
             Log.Debug("System shutdown initiated");
             _provider.Guardian.Stop();
+            return WhenTerminated;
         }
 
-        public override Task TerminationTask { get { return _provider.TerminationTask; } }
+        [Obsolete("Use WhenTerminated instead. This property will be removed in future versions")]
+        public override Task TerminationTask { get { return _terminationCallbacks.TerminationTask; } }
 
+        [Obsolete("Use WhenTerminated instead. This method will be removed in future versions")]
         public override void AwaitTermination()
         {
             AwaitTermination(Timeout.InfiniteTimeSpan, CancellationToken.None);
         }
 
+        [Obsolete("Use WhenTerminated instead. This method will be removed in future versions")]
         public override bool AwaitTermination(TimeSpan timeout)
         {
             return AwaitTermination(timeout, CancellationToken.None);
         }
 
+        [Obsolete("Use WhenTerminated instead. This method will be removed in future versions")]
         public override bool AwaitTermination(TimeSpan timeout, CancellationToken cancellationToken)
         {
             try
             {
-                return _provider.TerminationTask.Wait((int) timeout.TotalMilliseconds, cancellationToken);
+                return WhenTerminated.Wait((int) timeout.TotalMilliseconds, cancellationToken);
             }
             catch(OperationCanceledException)
             {
@@ -332,6 +451,14 @@ namespace Akka.Actor.Internal
                 return false;
             }
         }
+
+        /// <summary>
+        /// Returns a task which will be completed after the ActorSystem has been terminated
+        /// and termination hooks have been executed. Be careful to not schedule any operations
+        /// on the `dispatcher` of this actor system as it will have been shut down before this
+        /// task completes.
+        /// </summary>
+        public override Task WhenTerminated { get { return _terminationCallbacks.TerminationTask; } }
 
         public override void Stop(IActorRef actor)
         {
@@ -345,7 +472,45 @@ namespace Akka.Actor.Internal
                 ((IInternalActorRef)actor).Stop();
         }
 
+    }
 
+    class TerminationCallbacks
+    {
+        private Task _terminationTask;
+        private readonly AtomicReference<Task> _atomicRef;
+
+        public TerminationCallbacks(Task upStreamTerminated)
+        {
+            _atomicRef = new AtomicReference<Task>(new Task(() => {}));
+
+            upStreamTerminated.ContinueWith(_ =>
+            {
+                _terminationTask = _atomicRef.GetAndSet(null);
+                _terminationTask.Start();
+            });
+        }
+
+        /// <summary></summary>
+        /// <exception cref="InvalidOperationException">This exception is thrown if the actor system has been terminated.</exception>
+        public void Add(Action code)
+        {
+            var previous = _atomicRef.Value;
+
+            if (_atomicRef.Value == null)
+                throw new InvalidOperationException("ActorSystem already terminated.");
+
+            var t = new Task(code);
+
+            if (_atomicRef.CompareAndSet(previous, t))
+            {
+                t.ContinueWith(_ => previous.Start());
+                return;
+            }
+
+            Add(code);
+        }
+
+        public Task TerminationTask { get { return _atomicRef.Value ?? _terminationTask; } }
     }
 }
 

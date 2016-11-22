@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="ByteIterator.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -43,6 +43,8 @@ namespace Akka.Util
                 get { return _array[_from]; }
             }
 
+            /// <summary></summary>
+            /// <exception cref="IndexOutOfRangeException"></exception>
             public override byte Next()
             {
                 if (!HasNext) throw new IndexOutOfRangeException();
@@ -119,7 +121,8 @@ namespace Akka.Util
                 return result;
             }
 
-            
+            /// <summary></summary>
+            /// <exception cref="IndexOutOfRangeException"></exception>
             public override ByteIterator GetBytes(byte[] xs, int offset, int n)
             {
                 if (n > Len) throw new IndexOutOfRangeException();
@@ -197,7 +200,11 @@ namespace Akka.Util
 
             public override bool HasNext
             {
-                get { return Current.HasNext; }
+                get
+                {
+                    if (!_iterators.IsEmpty) return Current.HasNext;
+                    return false;
+                }
             }
 
             public override byte Head
@@ -332,6 +339,11 @@ namespace Akka.Util
         public abstract byte Next();
         protected abstract void Clear();
 
+        /// <summary>
+        /// N/A
+        /// </summary>
+        /// <exception cref="NotSupportedException"></exception>
+        /// <returns>N/A</returns>
         public virtual ByteIterator Clone()
         {
             throw new NotSupportedException();
@@ -352,11 +364,23 @@ namespace Akka.Util
                 : Take(until);
         }
 
+        /// <summary>
+        /// N/A
+        /// </summary>
+        /// <param name="p">N/A</param>
+        /// <exception cref="NotSupportedException"></exception>
+        /// <returns>N/A</returns>
         public virtual ByteIterator TakeWhile(Func<byte, bool> p)
         {
             throw new NotSupportedException();
         }
 
+        /// <summary>
+        /// N/A
+        /// </summary>
+        /// <param name="p">N/A</param>
+        /// <exception cref="NotSupportedException"></exception>
+        /// <returns>N/A</returns>
         public virtual ByteIterator DropWhile(Func<byte, bool> p)
         {
             throw new NotSupportedException();
@@ -418,15 +442,15 @@ namespace Akka.Util
         /// <summary>Get a single Int from this iterator.</summary>
         public int GetInt(ByteOrder byteOrder = ByteOrder.BigEndian)
         {
-          return byteOrder == ByteOrder.BigEndian
-              ? (short)(((Next() & 0xff) << 24) 
-                      | ((Next() & 0xff) << 16)
-                      | ((Next() & 0xff) <<  8)
-                      | ((Next() & 0xff) <<  0))
-              : (short)(((Next() & 0xff) <<  0)
-                      | ((Next() & 0xff) <<  8)
-                      | ((Next() & 0xff) << 16)
-                      | ((Next() & 0xff) << 24));
+            return byteOrder == ByteOrder.BigEndian
+                         ? (((Next() & 0xff) << 24)
+                          | ((Next() & 0xff) << 16)
+                          | ((Next() & 0xff) << 8)
+                          | ((Next() & 0xff) << 0))
+                         : (((Next() & 0xff) << 0)
+                          | ((Next() & 0xff) << 8)
+                          | ((Next() & 0xff) << 16)
+                          | ((Next() & 0xff) << 24));
         }
 
         /// <summary>Get a single Long from this iterator.</summary>

@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="RemoteActorRefProvider.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -12,10 +12,10 @@ using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Actor.Internal;
 using Akka.Configuration;
+using Akka.Dispatch;
 using Akka.Dispatch.SysMsg;
 using Akka.Event;
 using Akka.Remote.Configuration;
-using Akka.Serialization;
 using Akka.Util.Internal;
 
 namespace Akka.Remote
@@ -45,13 +45,16 @@ namespace Akka.Remote
 
         private Internals RemoteInternals
         {
-            get
-            {
-                return _internals ??
-                       (_internals =
-                           new Internals(new Remoting(_system, this), _system.Serialization,
-                               new RemoteSystemDaemon(_system, RootPath / "remote", SystemGuardian, _remotingTerminator, _log)));
-            }
+            get { return _internals ?? (_internals = CreateInternals()); }
+        }
+
+        private Internals CreateInternals()
+        {
+            var internals =
+                new Internals(new Remoting(_system, this), _system.Serialization,
+                    new RemoteSystemDaemon(_system, RootPath / "remote", RootGuardian, _remotingTerminator, _log));
+            _local.RegisterExtraName("remote", internals.RemoteDaemon);
+            return internals;
         }
 
         public IInternalActorRef RemoteDaemon { get { return RemoteInternals.RemoteDaemon; } }
@@ -95,6 +98,7 @@ namespace Akka.Remote
 
         private volatile IActorRef _remotingTerminator;
         private volatile IActorRef _remoteWatcher;
+        internal IActorRef RemoteWatcher => _remoteWatcher;
         private volatile IActorRef _remoteDeploymentWatcher;
 
         public virtual void Init(ActorSystemImpl system)
@@ -119,7 +123,7 @@ namespace Akka.Remote
         {
             var failureDetector = CreateRemoteWatcherFailureDetector(system);
             return system.SystemActorOf(RemoteSettings.ConfigureDispatcher(
-                RemoteWatcher.Props(
+                Akka.Remote.RemoteWatcher.Props(
                     failureDetector,
                     RemoteSettings.WatchHeartBeatInterval,
                     RemoteSettings.WatchUnreachableReaperInterval,
@@ -286,8 +290,14 @@ namespace Akka.Remote
             {
                 //the actor's local address was already included in the ActorPath
                 if (HasAddress(actorPath.Address))
-                    return (IInternalActorRef)ResolveActorRef(actorPath);
-                return new RemoteActorRef(Transport, localAddress, new RootActorPath(actorPath.Address) / actorPath.Elements, ActorRefs.Nobody, Props.None, Deploy.None);
+                {
+                    // HACK: needed to make ActorSelections work
+                    if (actorPath.ToStringWithoutAddress().Equals("/"))
+                        return RootGuardian;
+                    return _local.ResolveActorRef(RootGuardian, actorPath.ElementsWithUid);
+                }
+                    
+                return new RemoteActorRef(Transport, localAddress, new RootActorPath(actorPath.Address) / actorPath.ElementsWithUid, ActorRefs.Nobody, Props.None, Deploy.None);
             }
             _log.Debug("resolve of unknown path [{0}] failed", path);
             return InternalDeadLetters;
@@ -311,37 +321,22 @@ namespace Akka.Remote
         {
             if (HasAddress(actorPath.Address))
             {
-                var elements = actorPath.Elements;
-                if (elements.Head() == "remote")
-                {
-                    if (actorPath.ToStringWithoutAddress() == "/remote")
-                    {
-                        return RemoteDaemon;
-                    }
-                    //skip ""/"remote", 
-                    var parts = elements.Drop(1);
-                    return RemoteDaemon.GetChild(parts);
-                }
-                if (elements.Head() == "temp")
-                {
-                    //skip ""/"temp", 
-                    var parts = elements.Drop(1);
-                    return TempContainer.GetChild(parts);
-                }
-                //standard
-                var rootGuardian = RootGuardian;
-                if (actorPath.ToStringWithoutAddress() == "/")
-                {
-                    return rootGuardian;
-                }
-                return rootGuardian.GetChild(elements);
+                return _local.ResolveActorRef(RootGuardian, actorPath.ElementsWithUid);
             }
-            return new RemoteActorRef(Transport,
-                Transport.LocalAddressForRemote(actorPath.Address),
-                actorPath,
-                ActorRefs.Nobody,
-                Props.None,
-                Deploy.None);
+            try
+            {
+                return new RemoteActorRef(Transport,
+                    Transport.LocalAddressForRemote(actorPath.Address),
+                    actorPath, 
+                    ActorRefs.Nobody,
+                    Props.None,
+                    Deploy.None);
+            }
+            catch (Exception ex)
+            {
+                _log.Warning("Error while resolving address [{0}] due to [{1}]", actorPath.Address, ex.Message);
+                return new EmptyLocalActorRef(this, RootPath, _local.EventStream);
+            }
         }
 
         public Address GetExternalAddressFor(Address address)
@@ -379,19 +374,6 @@ namespace Akka.Remote
         public void Quarantine(Address address, int? uid)
         {
             Transport.Quarantine(address, uid);
-        }
-
-        /// <summary>
-        ///     Afters the send system message.
-        /// </summary>
-        /// <param name="message">The message.</param>
-        public void AfterSendSystemMessage(ISystemMessage message)
-        {
-            message.Match()
-                .With<RemoteWatcher.Rewatch>(rew => _remoteWatcher.Tell(new RemoteWatcher.RewatchRemote(rew.Watchee, rew.Watcher)))
-                .With<Watch>(m => _remoteWatcher.Tell(new RemoteWatcher.WatchRemote(m.Watchee, m.Watcher)))
-                .With<Unwatch>(m => _remoteWatcher.Tell(new RemoteWatcher.UnwatchRemote(m.Watchee, m.Watcher)));
-
         }
 
 
@@ -437,7 +419,7 @@ namespace Akka.Remote
         /// Responsible for shutting down the <see cref="RemoteDaemon"/> and all transports
         /// when the <see cref="ActorSystem"/> is being shutdown.
         /// </summary>
-        private class RemotingTerminator : FSM<TerminatorState, Internals>
+        private class RemotingTerminator : FSM<TerminatorState, Internals>, IRequiresMessageQueue<IUnboundedMessageQueueSemantics>
         {
             private readonly IActorRef _systemGuardian;
             private readonly ILoggingAdapter _log;
@@ -529,30 +511,27 @@ namespace Akka.Remote
 
             protected override void TellInternal(object message, IActorRef sender)
             {
-                message
-                    .Match()
-                    .With<EndpointManager.Send>(
-                        send =>
-                        {
-                            // else ignore: it is a reliably delivered message that might be retried later, and it has not yet deserved
-                            // the dead letter status
-                            if (send.Seq == null)
-                            {
-                                base.TellInternal(send.Message, send.SenderOption ?? ActorRefs.NoSender);
-                            }
-                        })
-                    .With<DeadLetter>(
-                        deadLetter =>
-                        {
-                            // else ignore: it is a reliably delivered message that might be retried later, and it has not yet deserved
-                            // the dead letter status
-                            var deadSend = deadLetter.Message as EndpointManager.Send;
-                            if (deadSend != null && deadSend.Seq == null)
-                            {
-                                base.TellInternal(deadSend.Message, deadSend.SenderOption ?? ActorRefs.NoSender);
-                            }
-                        })
-                    .Default(_ => base.TellInternal(message, sender));
+                var send = message as EndpointManager.Send;
+                var deadLetter = message as DeadLetter;
+                if (send != null)
+                {
+                    if (send.Seq == null)
+                    {
+                        base.TellInternal(send.Message, send.SenderOption ?? ActorRefs.NoSender);
+                    }
+                }
+                else if (deadLetter?.Message is EndpointManager.Send)
+                {
+                    var deadSend = (EndpointManager.Send)deadLetter.Message;
+                    if (deadSend.Seq == null)
+                    {
+                        base.TellInternal(deadSend.Message, deadSend.SenderOption ?? ActorRefs.NoSender);
+                    }
+                }
+                else
+                {
+                    base.TellInternal(message, sender);
+                }
             }
         }
     }

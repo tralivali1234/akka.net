@@ -1,13 +1,14 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="AutoDown.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
 using System;
 using System.Collections.Immutable;
 using Akka.Actor;
+using Akka.Configuration;
 using Akka.Event;
 
 namespace Akka.Cluster
@@ -22,7 +23,7 @@ namespace Akka.Cluster
     /// The implementation is split into two classes AutoDown and AutoDownBase to be
     /// able to unit test the logic without running cluster.
     /// </summary>
-    public class AutoDown : AutoDownBase
+    internal class AutoDown : AutoDownBase
     {
         public static Props Props(TimeSpan autoDownUnreachableAfter)
         {
@@ -80,7 +81,7 @@ namespace Akka.Cluster
 
     }
 
-    public abstract class AutoDownBase : UntypedActor
+    internal abstract class AutoDownBase : UntypedActor
     {
         readonly ImmutableHashSet<MemberStatus> _skipMemberStatus =
             Gossip.ConvergenceSkipUnreachableWithMemberStatus;
@@ -204,6 +205,32 @@ namespace Akka.Cluster
         }
 
         public ILoggingAdapter Log { get; private set; }
+    }
+
+    /// <summary>
+    /// Used when no custom provider is configured and 'auto-down-unreachable-after' is enabled.
+    /// </summary>
+    internal sealed class AutoDowning : IDowningProvider
+    {
+        private readonly ClusterSettings _clusterSettings;
+
+        public AutoDowning(ActorSystem system)
+        {
+            _clusterSettings = Cluster.Get(system).Settings;
+        }
+
+        public TimeSpan DownRemovalMargin => _clusterSettings.DownRemovalMargin;
+
+        public Props DowningActorProps
+        {
+            get
+            {
+                if (_clusterSettings.AutoDownUnreachableAfter.HasValue)
+                    return AutoDown.Props(_clusterSettings.AutoDownUnreachableAfter.Value);
+                else 
+                    throw new ConfigurationException("AutoDowning downing provider selected but 'akka.cluster.auto-down-unreachable-after' not set");
+            }
+        }
     }
 }
 

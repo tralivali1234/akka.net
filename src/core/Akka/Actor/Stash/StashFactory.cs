@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="StashFactory.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -27,6 +27,10 @@ namespace Akka.Actor
             return CreateStash(context, actorInstance.GetType());
         }
 
+        /// <summary></summary>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown if the given <paramref name="actorType"/> implements an unrecognized subclass of <see cref="IActorStash"/>.
+        /// </exception>
         public static IStash CreateStash(this IActorContext context, Type actorType)
         {
             if(actorType.Implements<IWithBoundedStash>())
@@ -39,9 +43,7 @@ namespace Akka.Actor
                 return new UnboundedStashImpl(context);
             }
 
-            throw new ArgumentException(string.Format("Actor {0} implements unrecognized subclass of {1} - cannot instantiate",
-                actorType, typeof(IActorStash)));
+            throw new ArgumentException($"Actor {actorType} implements an unrecognized subclass of {typeof(IActorStash)} - cannot instantiate", nameof(actorType));
         }
     }
 }
-

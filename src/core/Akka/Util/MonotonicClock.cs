@@ -1,12 +1,13 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="MonotonicClock.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Akka.Util
@@ -14,7 +15,7 @@ namespace Akka.Util
 	internal static class MonotonicClock
 	{
 		private static readonly Stopwatch Stopwatch = Stopwatch.StartNew();
-		private static readonly bool IsMono = Type.GetType("Mono.Runtime") != null;
+
 		[DllImport("kernel32")]
 		private static extern ulong GetTickCount64();
 
@@ -30,23 +31,26 @@ namespace Akka.Util
 			}
 		}
 
-		public static TimeSpan ElapsedHighRes
+        public static TimeSpan ElapsedHighRes
 		{
 			get { return Stopwatch.Elapsed; }
 		}
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
 	    public static long GetMilliseconds()
 	    {
-	        return IsMono
-	            ? Stopwatch.ElapsedMilliseconds
-	            : (long) GetTickCount64();
-	    }
+            return RuntimeDetector.IsMono
+                ? Stopwatch.ElapsedMilliseconds
+                : (long)GetTickCount64();
+        }
 
-	    public static long GetNanos()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static long GetNanos()
 	    {
 	        return GetTicks() * NanosPerTick;
 	    }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
 	    public static long GetTicks()
 	    {
 	        return GetMilliseconds() * TicksInMillisecond;

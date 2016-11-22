@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="UnboundedPriorityMailboxQueue.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -16,9 +16,19 @@ namespace Akka.Dispatch.MessageQueues
     /// </summary>
     public class UnboundedPriorityMessageQueue : BlockingMessageQueue
     {
-        private readonly ListPriorityQueue _prioQueue = new ListPriorityQueue();
+        private readonly ListPriorityQueue _prioQueue;
 
-        public UnboundedPriorityMessageQueue(Func<object, int> priorityGenerator)
+        public UnboundedPriorityMessageQueue(int initialCapacity)
+        {
+            _prioQueue = new ListPriorityQueue(initialCapacity);
+        }
+
+        public UnboundedPriorityMessageQueue(Func<object, int> priorityGenerator, int initialCapacity) : this(initialCapacity)
+        {
+            _prioQueue.SetPriorityCalculator(priorityGenerator);
+        }
+
+        internal void SetPriorityGenerator(Func<object, int> priorityGenerator)
         {
             _prioQueue.SetPriorityCalculator(priorityGenerator);
         }

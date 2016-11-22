@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="FSM.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -13,6 +13,7 @@ using System.Threading;
 using Akka.Actor.Internal;
 using Akka.Dispatch.SysMsg;
 using Akka.Event;
+using Akka.Pattern;
 using Akka.Routing;
 using Akka.Util.Internal;
 
@@ -601,7 +602,10 @@ namespace Akka.Actor
         /// </summary>
         public void Initialize()
         {
-            MakeTransition(_currentState);
+            if (_currentState != null)
+                MakeTransition(_currentState);
+            else
+                throw new IllegalStateException("You must call StartWith before calling Initialize.");
         }
 
         /// <summary>
@@ -609,7 +613,12 @@ namespace Akka.Actor
         /// </summary>
         public TState StateName
         {
-            get { return _currentState.StateName; }
+            get
+            {
+                if (_currentState != null)
+                    return _currentState.StateName;
+                throw new IllegalStateException("You must call StartWith before calling StateName.");
+            }
         }
 
         /// <summary>
@@ -617,12 +626,20 @@ namespace Akka.Actor
         /// </summary>
         public TData StateData
         {
-            get { return _currentState.StateData; }
+            get
+            {
+                if (_currentState != null)
+                    return _currentState.StateData;
+                throw new IllegalStateException("You must call StartWith before calling StateData.");
+            }
         }
 
         /// <summary>
         /// Return next state data (available in <see cref="OnTransition"/> handlers)
         /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// This exception is thrown if this property is accessed outside of an <see cref="OnTransition"/> handler.
+        /// </exception>
         public TData NextStateData
         {
             get

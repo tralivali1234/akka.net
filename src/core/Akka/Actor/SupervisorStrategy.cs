@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="SupervisorStrategy.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Akka.Actor.Internal;
+using Akka.Configuration;
 using Akka.Event;
 using Akka.Util;
 using Akka.Util.Internal;
@@ -21,6 +22,8 @@ namespace Akka.Actor
     /// </summary>
     public abstract class SupervisorStrategy : ISurrogated
     {
+        public abstract IDecider Decider { get; }
+
         /// <summary>
         ///     Handles the specified child.
         /// </summary>
@@ -28,6 +31,13 @@ namespace Akka.Actor
         /// <param name="x">The exception that caused the evaluation to occur.</param>
         /// <returns>Directive.</returns>
         protected abstract Directive Handle(IActorRef child, Exception x);
+
+        [Obsolete]
+        // for compatibility, since 1.1.2
+        public bool HandleFailure(ActorCell actorCell, Exception cause, ChildRestartStats failedChildStats, IReadOnlyCollection<ChildRestartStats> allChildren)
+        {
+            return HandleFailure(actorCell, failedChildStats.Child, cause, failedChildStats, allChildren);
+        }
 
         /// <summary>
         ///     This is the main entry point: in case of a child’s failure, this method
@@ -41,13 +51,13 @@ namespace Akka.Actor
         ///     do the logging inside the `decider` or override the `LogFailure` method.
         /// </summary>
         /// <param name="actorCell">The actor cell.</param>
+        /// <param name="child">The child actor.</param>
         /// <param name="cause">The cause.</param>
-        /// <param name="failedChildStats">The stats for the failed child.</param>
-        /// <param name="allChildren"></param>
+        /// <param name="stats">The stats for the failed child.</param>
+        /// <param name="children"></param>
         /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
-        public bool HandleFailure(ActorCell actorCell, Exception cause, ChildRestartStats failedChildStats, IReadOnlyCollection<ChildRestartStats> allChildren)
+        public bool HandleFailure(ActorCell actorCell, IActorRef child, Exception cause, ChildRestartStats stats, IReadOnlyCollection<ChildRestartStats> children)
         {
-            var child = failedChildStats.Child;
             var directive = Handle(child, cause);
             switch (directive)
             {
@@ -60,11 +70,11 @@ namespace Akka.Actor
                     return true;
                 case Directive.Restart:
                     LogFailure(actorCell, child, cause, directive);
-                    ProcessFailure(actorCell, true, cause, failedChildStats, allChildren);
+                    ProcessFailure(actorCell, true, child, cause, stats, children);
                     return true;
                 case Directive.Stop:
                     LogFailure(actorCell, child, cause, directive);
-                    ProcessFailure(actorCell, false, cause, failedChildStats, allChildren);
+                    ProcessFailure(actorCell, false, child, cause, stats, children);
                     return true;
             }
             return false;
@@ -79,7 +89,7 @@ namespace Akka.Actor
         ///     The error is escalated if it's a `Exception`, i.e. `Error`.
         /// </summary>
         /// <returns>Directive.</returns>
-        public static IDecider DefaultDecider = Decider.From(Directive.Restart,
+        public static IDecider DefaultDecider = Akka.Actor.Decider.From(Directive.Restart,
             Directive.Stop.When<ActorInitializationException>(),
             Directive.Stop.When<ActorKilledException>(),
             Directive.Stop.When<DeathPactException>());
@@ -98,15 +108,20 @@ namespace Akka.Actor
             c.AsInstanceOf<IInternalActorRef>().Restart(cause);
         }
 
+        [Obsolete]
+        // for compatibility, since 1.1.2
+        protected abstract void ProcessFailure(IActorContext context, bool restart, Exception cause, ChildRestartStats failedChildStats, IReadOnlyCollection<ChildRestartStats> allChildren);
+
         /// <summary>
         /// This method is called to act on the failure of a child: restart if the flag is true, stop otherwise.
         /// </summary>
         /// <param name="context">The actor context.</param>
         /// <param name="restart">if set to <c>true</c> restart, stop otherwise.</param>
+        /// <param name="child">The child actor</param>
         /// <param name="cause">The exception that caused the child to fail.</param>
-        /// <param name="failedChildStats">The stats for the child that failed. The ActorRef to the child can be obtained via the <see cref="ChildRestartStats.Child"/> property</param>
-        /// <param name="allChildren">The stats for all children</param>
-        protected abstract void ProcessFailure(IActorContext context, bool restart, Exception cause, ChildRestartStats failedChildStats, IReadOnlyCollection<ChildRestartStats> allChildren);
+        /// <param name="stats">The stats for the child that failed. The ActorRef to the child can be obtained via the <see cref="ChildRestartStats.Child"/> property</param>
+        /// <param name="children">The stats for all children</param>
+        protected abstract void ProcessFailure(IActorContext context, bool restart, IActorRef child, Exception cause, ChildRestartStats stats, IReadOnlyCollection<ChildRestartStats> children);
 
         /// <summary>
         ///  Resume the previously failed child: <b>do never apply this to a child which
@@ -196,7 +211,7 @@ namespace Akka.Actor
     /// <summary>
     ///     Class OneForOneStrategy. This class cannot be inherited.
     /// </summary>
-    public class OneForOneStrategy : SupervisorStrategy
+    public class OneForOneStrategy : SupervisorStrategy, IEquatable<OneForOneStrategy>
     {
         private readonly int _maxNumberOfRetries;
         private readonly int _withinTimeRangeMilliseconds;
@@ -212,7 +227,7 @@ namespace Akka.Actor
             get { return _withinTimeRangeMilliseconds; }
         }
 
-        public IDecider Decider
+        public override IDecider Decider
         {
             get { return _decider; }
         }
@@ -325,22 +340,27 @@ namespace Akka.Actor
             return Decider.Decide(x);
         }
 
+        [Obsolete]
+        // for compatibility, since 1.1.2
         protected override void ProcessFailure(IActorContext context, bool restart, Exception cause, ChildRestartStats failedChildStats, IReadOnlyCollection<ChildRestartStats> allChildren)
         {
-            var failedChild = failedChildStats.Child;
-
-            if (restart && failedChildStats.RequestRestartPermission(MaxNumberOfRetries, WithinTimeRangeMilliseconds))
-                RestartChild(failedChild, cause, suspendFirst: false);
-            else
-                context.Stop(failedChild);
+            ProcessFailure(context, restart, failedChildStats.Child, cause, failedChildStats, allChildren);
         }
 
+        protected override void ProcessFailure(IActorContext context, bool restart, IActorRef child, Exception cause, ChildRestartStats stats, IReadOnlyCollection<ChildRestartStats> children)
+        {
+            if (restart && stats.RequestRestartPermission(MaxNumberOfRetries, WithinTimeRangeMilliseconds))
+                RestartChild(child, cause, suspendFirst: false);
+            else
+                context.Stop(child);
+        }
 
         public override void HandleChildTerminated(IActorContext actorContext, IActorRef child, IEnumerable<IInternalActorRef> children)
         {
             //Intentionally left blank
         }
 
+        #region Surrogate
         public class OneForOneStrategySurrogate : ISurrogate
         {
             public int MaxNumberOfRetries { get; set; }
@@ -354,6 +374,8 @@ namespace Akka.Actor
             }
         }
 
+        /// <summary></summary>
+        /// <exception cref="NotSupportedException">This exception is thrown if the <see cref="Decider"/> is of type <see cref="LocalOnlyDecider"/>.</exception>
         public override ISurrogate ToSurrogate(ActorSystem system)
         {
             if (Decider is LocalOnlyDecider)
@@ -366,12 +388,41 @@ namespace Akka.Actor
                 WithinTimeRangeMilliseconds = WithinTimeRangeMilliseconds
             };
         }
+        #endregion
+
+        #region Equals
+        public bool Equals(OneForOneStrategy other)
+        {
+            if (ReferenceEquals(other, null)) return false;
+            if (ReferenceEquals(other, this)) return true;
+
+            return MaxNumberOfRetries.Equals(other.MaxNumberOfRetries) &&
+                   WithinTimeRangeMilliseconds.Equals(other.WithinTimeRangeMilliseconds) &&
+                   Decider.Equals(other.Decider);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as OneForOneStrategy);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hashCode = (Decider != null ? Decider.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ MaxNumberOfRetries.GetHashCode();
+                hashCode = (hashCode * 397) ^ WithinTimeRangeMilliseconds.GetHashCode();
+                return hashCode;
+            }
+        }
+        #endregion
     }
 
     /// <summary>
     ///     Class AllForOneStrategy. This class cannot be inherited.
     /// </summary>
-    public class AllForOneStrategy : SupervisorStrategy
+    public class AllForOneStrategy : SupervisorStrategy, IEquatable<AllForOneStrategy>
     {
         private readonly IDecider _decider;
         private readonly int _withinTimeRangeMilliseconds;
@@ -387,7 +438,7 @@ namespace Akka.Actor
             get { return _withinTimeRangeMilliseconds; }
         }
 
-        public IDecider Decider
+        public override IDecider Decider
         {
             get { return _decider; }
         }
@@ -502,22 +553,27 @@ namespace Akka.Actor
             return Decider.Decide(x);
         }
 
+        [Obsolete]
+        // for compatibility, since 1.1.2
         protected override void ProcessFailure(IActorContext context, bool restart, Exception cause, ChildRestartStats failedChildStats, IReadOnlyCollection<ChildRestartStats> allChildren)
         {
-            if (allChildren.Count > 0)
-            {
-                var failedChild = failedChildStats.Child;
+            ProcessFailure(context, restart, failedChildStats.Child, cause, failedChildStats, allChildren);
+        }
 
-                if (restart && allChildren.All(c => c.RequestRestartPermission(MaxNumberOfRetries, WithinTimeRangeMilliseconds)))
+        protected override void ProcessFailure(IActorContext context, bool restart, IActorRef child, Exception cause, ChildRestartStats stats, IReadOnlyCollection<ChildRestartStats> children)
+        {
+            if (children.Count > 0)
+            {
+                if (restart && children.All(c => c.RequestRestartPermission(MaxNumberOfRetries, WithinTimeRangeMilliseconds)))
                 {
-                    foreach (var crs in allChildren)
+                    foreach (var crs in children)
                     {
-                        RestartChild(crs.Child, cause, suspendFirst: !failedChild.Equals(crs.Child));
+                        RestartChild(crs.Child, cause, suspendFirst: !child.Equals(crs.Child));
                     }
                 }
                 else
                 {
-                    foreach (var crs in allChildren)
+                    foreach (var crs in children)
                     {
                         context.Stop(crs.Child);
                     }
@@ -530,6 +586,7 @@ namespace Akka.Actor
             //Intentionally left blank
         }
 
+        #region Surrogate
         public class AllForOneStrategySurrogate : ISurrogate
         {
             public int MaxNumberOfRetries { get; set; }
@@ -553,6 +610,35 @@ namespace Akka.Actor
                 WithinTimeRangeMilliseconds = WithinTimeRangeMilliseconds
             };
         }
+        #endregion
+
+        #region Equals
+        public bool Equals(AllForOneStrategy other)
+        {
+            if (ReferenceEquals(other, null)) return false;
+            if (ReferenceEquals(other, this)) return true;
+
+            return MaxNumberOfRetries.Equals(other.MaxNumberOfRetries) &&
+                   WithinTimeRangeMilliseconds.Equals(other.WithinTimeRangeMilliseconds) &&
+                   Decider.Equals(other.Decider);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as AllForOneStrategy);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hashCode = (Decider != null ? Decider.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ MaxNumberOfRetries.GetHashCode();
+                hashCode = (hashCode * 397) ^ WithinTimeRangeMilliseconds.GetHashCode();
+                return hashCode;
+            }
+        }
+        #endregion
     }
 
     /// <summary>
@@ -667,7 +753,7 @@ namespace Akka.Actor
         }
     }
 
-    public class DeployableDecider : IDecider
+    public class DeployableDecider : IDecider, IEquatable<DeployableDecider>
     {
         //Json .net can not decide which of the other ctors are the correct one to use
         //so we fall back to default ctor and property injection for deserializer
@@ -705,6 +791,77 @@ namespace Akka.Actor
 
             return DefaultDirective;
         }
+
+        public bool Equals(DeployableDecider other)
+        {
+            if (ReferenceEquals(other, null)) return false;
+            if (ReferenceEquals(other, this)) return true;
+
+            return DefaultDirective.Equals(other.DefaultDirective) &&
+                   Pairs.SequenceEqual(other.Pairs);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as DeployableDecider);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hashCode = (Pairs != null ? Pairs.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ ((int)DefaultDirective).GetHashCode();
+                return hashCode;
+            }
+        }
+    }
+
+    public abstract class SupervisorStrategyConfigurator
+    {
+        public abstract SupervisorStrategy Create();
+
+        /// <summary></summary>
+        /// <exception cref="ConfigurationException">
+        /// This exception is thrown if the given <paramref name="typeName"/> is undefined or references an unknown type.
+        /// </exception>
+        public static SupervisorStrategyConfigurator CreateConfigurator(string typeName)
+        {
+            switch (typeName)
+            {
+                case "Akka.Actor.DefaultSupervisorStrategy":
+                    return new DefaultSupervisorStrategy();
+
+                case "Akka.Actor.StoppingSupervisorStrategy":
+                    return new StoppingSupervisorStrategy();
+
+                case null:
+                    throw new ConfigurationException("Could not resolve SupervisorStrategyConfigurator. typeName is null");
+
+                default:
+                    Type configuratorType = Type.GetType(typeName);
+
+                    if (configuratorType == null)
+                        throw new ConfigurationException($"Could not resolve SupervisorStrategyConfigurator type {typeName}");
+
+                    return (SupervisorStrategyConfigurator)Activator.CreateInstance(configuratorType);
+            }
+        }
+    }
+
+    public class DefaultSupervisorStrategy : SupervisorStrategyConfigurator
+    {
+        public override SupervisorStrategy Create()
+        {
+            return SupervisorStrategy.DefaultStrategy;
+        }
+    }
+
+    public class StoppingSupervisorStrategy : SupervisorStrategyConfigurator
+    {
+        public override SupervisorStrategy Create()
+        {
+            return SupervisorStrategy.StoppingStrategy;
+        }
     }
 }
-

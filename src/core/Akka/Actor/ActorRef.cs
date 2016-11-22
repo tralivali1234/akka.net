@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="ActorRef.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -89,16 +89,21 @@ namespace Akka.Actor
 
             if (message is ISystemMessage) //we have special handling for system messages
             {
-                SendSystemMessage(message.AsInstanceOf<ISystemMessage>(), sender);
+                SendSystemMessage(message.AsInstanceOf<ISystemMessage>());
             }
             else
             {
                 if (Interlocked.Exchange(ref status, COMPLETED) == INITIATED)
                 {
-                    _unregister();
                     _result.TrySetResult(message);
+                    _unregister();
                 }
             }
+        }
+
+        public override void SendSystemMessage(ISystemMessage message)
+        {
+            base.SendSystemMessage(message);
         }
     }
 
@@ -157,7 +162,7 @@ namespace Akka.Actor
                 Path = path;
             }
 
-            public string Path { get; private set; }
+            public string Path { get; }
 
             public ISurrogated FromSurrogate(ActorSystem system)
             {
@@ -181,7 +186,8 @@ namespace Akka.Actor
 
         public override string ToString()
         {
-            return string.Format("[{0}]", Path);
+            if(Path.Uid == ActorCell.UndefinedUid) return $"[{Path}]";
+            return $"[{Path}#{Path.Uid}]";
         }
 
         public override bool Equals(object obj)
@@ -202,16 +208,27 @@ namespace Akka.Actor
             }
         }
 
+        /// <summary>
+        /// Compares the current instance with another object of the same type and returns an integer that indicates whether the current instance precedes, follows, or occurs in the same position in the sort order as the other object.
+        /// </summary>
+        /// <param name="obj">An object to compare with this instance.</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown if the given <paramref name="obj"/> isn't an <see cref="IActorRef"/>.
+        /// </exception>
+        /// <returns>
+        /// A value that indicates the relative order of the objects being compared. The return value has these meanings: Value Meaning Less than zero This instance precedes <paramref name="obj" /> in the sort order. Zero This instance occurs in the same position in the sort order as <paramref name="obj" />. Greater than zero This instance follows <paramref name="obj" /> in the sort order.
+        /// </returns>
         public int CompareTo(object obj)
         {
             if (obj != null && !(obj is IActorRef))
-                throw new ArgumentException("Object must be of type IActorRef.");
+                throw new ArgumentException("Object must be of type IActorRef.", nameof(obj));
             return CompareTo((IActorRef) obj);
         }
 
         public bool Equals(IActorRef other)
         {
-            return Path.Uid == other.Path.Uid && Path.Equals(other.Path);
+            return Path.Uid == other.Path.Uid 
+                && Path.Equals(other.Path);
         }
 
         public int CompareTo(IActorRef other)
@@ -222,17 +239,18 @@ namespace Akka.Actor
             return Path.Uid == other.Path.Uid ? 0 : 1;
         }
 
-        public ISurrogate ToSurrogate(ActorSystem system)
+        public virtual ISurrogate ToSurrogate(ActorSystem system)
         {
             return new Surrogate(Serialization.Serialization.SerializedActorPath(this));
         }
     }
 
-
     public interface IInternalActorRef : IActorRef, IActorRefScope
     {
         IInternalActorRef Parent { get; }
         IActorRefProvider Provider { get; }
+
+        [Obsolete("Use Context.Watch and Receive<Terminated>")]
         bool IsTerminated { get; }
 
         /// <summary>
@@ -250,7 +268,10 @@ namespace Akka.Actor
         void Stop();
         void Restart(Exception cause);
         void Suspend();
+
+        [Obsolete("Use SendSystemMessage(message)")]
         void SendSystemMessage(ISystemMessage message, IActorRef sender);
+        void SendSystemMessage(ISystemMessage message);
     }
 
     public abstract class InternalActorRefBase : ActorRefBase, IInternalActorRef
@@ -275,18 +296,14 @@ namespace Akka.Actor
 
         public abstract bool IsTerminated { get; }
         public abstract bool IsLocal { get; }
+
+        [Obsolete("Use SendSystemMessage(message) instead")]
         public void SendSystemMessage(ISystemMessage message, IActorRef sender)
         {
-            var d = message as DeathWatchNotification;
-            if (message is Terminate)
-            {
-                Stop();
-            }
-            else if (d != null)
-            {
-                this.Tell(new Terminated(d.Actor, d.ExistenceConfirmed, d.AddressTerminated));
-            }
+            SendSystemMessage(message);
         }
+
+        public abstract void SendSystemMessage(ISystemMessage message);
     }
 
     public abstract class MinimalActorRef : InternalActorRefBase, ILocalRef
@@ -327,29 +344,51 @@ namespace Akka.Actor
         {
         }
 
+        public override void SendSystemMessage(ISystemMessage message)
+        {
+           
+        }
+
         public override bool IsLocal
         {
             get { return true; }
         }
 
+        [Obsolete("Use Context.Watch and Receive<Terminated>")]
         public override bool IsTerminated { get { return false; } }
     }
 
     /// <summary> This is an internal look-up failure token, not useful for anything else.</summary>
     public sealed class Nobody : MinimalActorRef
     {
+        public class NobodySurrogate : ISurrogate
+        {
+            public ISurrogated FromSurrogate(ActorSystem system)
+            {
+                return Nobody.Instance;
+            }
+        }
         public static Nobody Instance = new Nobody();
+        private static readonly NobodySurrogate SurrogateInstance = new NobodySurrogate();
         private readonly ActorPath _path = new RootActorPath(Address.AllSystems, "/Nobody");
 
         private Nobody() { }
 
         public override ActorPath Path { get { return _path; } }
 
+        /// <summary>N/A</summary>
+        /// <exception cref="NotSupportedException">
+        /// This exception is automatically thrown since this actor doesn't have a provider.
+        /// </exception>
         public override IActorRefProvider Provider
         {
             get { throw new NotSupportedException("Nobody does not provide"); }
         }
 
+        public override ISurrogate ToSurrogate(ActorSystem system)
+        {
+            return SurrogateInstance;
+        }
     }
 
     public abstract class ActorRefWithCell : InternalActorRefBase

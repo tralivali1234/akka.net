@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="TestScheduler.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -10,6 +10,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Akka.Actor;
+using Akka.Configuration;
+using Akka.Event;
 
 namespace Akka.TestKit
 {
@@ -17,12 +19,12 @@ namespace Akka.TestKit
                                  IAdvancedScheduler
     {
         private DateTimeOffset _now;
-        private readonly ConcurrentDictionary<long, Queue<ScheduledItem>>  _scheduledWork; 
+        private readonly ConcurrentDictionary<long, ConcurrentQueue<ScheduledItem>>  _scheduledWork; 
 
-        public TestScheduler(ActorSystem system)
+        public TestScheduler(Config schedulerConfig, ILoggingAdapter log)
         {
             _now = DateTimeOffset.UtcNow;
-            _scheduledWork = new ConcurrentDictionary<long, Queue<ScheduledItem>>();
+            _scheduledWork = new ConcurrentDictionary<long, ConcurrentQueue<ScheduledItem>>();
         }
 
         public void Advance(TimeSpan offset)
@@ -43,7 +45,7 @@ namespace Akka.TestKit
                     si.DeliveryCount++;
                 }
 
-                Queue<ScheduledItem> removed;
+                ConcurrentQueue<ScheduledItem> removed;
                 _scheduledWork.TryRemove(t.Key, out removed);
 
                 foreach (var i in removed.Where(r => r.Repeating && (r.Cancelable == null || !r.Cancelable.IsCancellationRequested)))
@@ -67,10 +69,10 @@ namespace Akka.TestKit
         {
             var scheduledTime = _now.Add(initialDelay ?? delay).UtcTicks;
 
-            Queue<ScheduledItem> tickItems = null;
+            ConcurrentQueue<ScheduledItem> tickItems = null;
             if (!_scheduledWork.TryGetValue(scheduledTime, out tickItems))
             {
-                tickItems = new Queue<ScheduledItem>();
+                tickItems = new ConcurrentQueue<ScheduledItem>();
                 _scheduledWork.TryAdd(scheduledTime, tickItems);
             }
             

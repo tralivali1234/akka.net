@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="IAutoReceivedMessage.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -14,7 +14,7 @@ namespace Akka.Actor
     }
 
     public sealed class
-        Terminated : IAutoReceivedMessage, IPossiblyHarmful
+        Terminated : IAutoReceivedMessage, IPossiblyHarmful, IDeadLetterSuppression
     {
         public Terminated(IActorRef actorRef, bool existenceConfirmed, bool addressTerminated)
         {
@@ -36,15 +36,20 @@ namespace Akka.Actor
         }
     }
 
-    //request to an actor ref, to get back the identity of the underlying actors
-    public sealed class Identify : IAutoReceivedMessage
+    /// <summary>
+    /// Request to an <see cref="ICanTell"/> to get back the identity of the underlying actors.
+    /// </summary>
+    public sealed class Identify : IAutoReceivedMessage, INotInfluenceReceiveTimeout
     {
         public Identify(object messageId)
         {
             MessageId = messageId;
         }
 
-        public object MessageId { get; private set; }
+        /// <summary>
+        /// A correlating ID used to distinguish multiple <see cref="Identify"/> requests to the same receiver.
+        /// </summary>
+        public object MessageId { get; }
 
         public override string ToString()
         {
@@ -52,7 +57,9 @@ namespace Akka.Actor
         }
     }
 
-    //response to the Identity message, get identity by Sender
+    /// <summary>
+    /// Response to the <see cref="Identify"/> message, get identity by Sender
+    /// </summary>
     public sealed class ActorIdentity
     {
         public ActorIdentity(object messageId, IActorRef subject)
@@ -61,7 +68,15 @@ namespace Akka.Actor
             Subject = subject;
         }
 
+        /// <summary>
+        /// The same correlating ID used in the original <see cref="Identify"/> message.
+        /// </summary>
         public object MessageId { get; private set; }
+
+        /// <summary>
+        /// A reference to the underyling actor.
+        /// </summary>
+        /// <remarks>Will be <c>null</c> if sent an <see cref="ActorSelection"/> that could not be resolved.</remarks>
         public IActorRef Subject { get; private set; }
 
         public override string ToString()
@@ -78,7 +93,7 @@ namespace Akka.Actor
     /// it processes the message, which gets handled using the normal supervisor mechanism, and
     /// <see cref="IActorContext.Stop"/> which causes the actor to stop without processing any more messages. </para>
     /// </summary>
-    public sealed class PoisonPill : IAutoReceivedMessage
+    public sealed class PoisonPill : IAutoReceivedMessage, IPossiblyHarmful, IDeadLetterSuppression
     {
         private PoisonPill() { }
         private static readonly PoisonPill _instance = new PoisonPill();
@@ -135,7 +150,7 @@ namespace Akka.Actor
     /// The watcher <see cref="DeathWatch"/> subscribes to the <see cref="AddressTerminatedTopic"/> and translates this
     /// event to <see cref="Terminated"/>, which is sent to itself.
     /// </summary>
-    internal class AddressTerminated : IAutoReceivedMessage, IPossiblyHarmful
+    internal class AddressTerminated : IAutoReceivedMessage, IPossiblyHarmful, IDeadLetterSuppression
     {
         public AddressTerminated(Address address)
         {

@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="UdpListener.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -53,7 +53,7 @@ namespace Akka.IO
                     socket.Bind(bind.LocalAddress);
                     var ret = socket.LocalEndPoint;
                     if (ret == null)
-                        throw new ArgumentException(string.Format("bound to unknown SocketAddress [{0}]", socket.LocalEndPoint));
+                        throw new ArgumentException($"bound to unknown SocketAddress [{socket.LocalEndPoint}]");
                     channelRegistry.Register(Channel, SocketAsyncOperation.Receive, Self);
                     _log.Debug("Successfully bound to [{0}]", ret);
                     bind.Options.OfType<Inet.SocketOptionV2>().ForEach(x => x.AfterBind(socket));

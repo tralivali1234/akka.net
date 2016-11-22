@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="TestKitBase.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -173,6 +173,15 @@ namespace Akka.TestKit
         /// </summary>
         public EventFilterFactory EventFilter { get { return _testState.EventFilterFactory; } }
 
+        /// <summary>
+        /// Creates a new event filter for the specified actor system.
+        /// </summary>
+        /// <param name="system">Actor system.</param>
+        /// <returns>A new instance of <see cref="EventFilterFactory"/>.</returns>
+        public EventFilterFactory CreateEventFilter(ActorSystem system)
+        {
+            return new EventFilterFactory(this, system);
+        }
 
         /// <summary>
         /// Returns <c>true</c> if messages are available.
@@ -343,8 +352,8 @@ namespace Akka.TestKit
             if (system == null) system = _testState.System;
 
             var durationValue = duration.GetValueOrDefault(Dilated(TimeSpan.FromSeconds(5)).Min(TimeSpan.FromSeconds(10)));
-            system.Shutdown();
-            var wasShutdownDuringWait = system.AwaitTermination(durationValue);
+
+            var wasShutdownDuringWait = system.Terminate().Wait(durationValue);
             if(!wasShutdownDuringWait)
             {
                 const string msg = "Failed to stop [{0}] within [{1}] \n{2}";

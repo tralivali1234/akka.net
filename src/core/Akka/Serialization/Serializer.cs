@@ -1,11 +1,12 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="Serializer.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
 using System;
+using System.Linq;
 using Akka.Actor;
 
 namespace Akka.Serialization
@@ -49,7 +50,10 @@ namespace Akka.Serialization
         /// Completely unique value to identify this implementation of Serializer, used to optimize network traffic
         /// Values from 0 to 16 is reserved for Akka internal usage
         /// </summary>
-        public abstract int Identifier { get; }
+        public virtual int Identifier
+        {
+            get { return SerializerIdentifierHelper.GetSerializerIdentifierFromConfig(GetType(), system); }
+        }
 
         /// <summary>
         /// Returns whether this serializer needs a manifest in the fromBinary method
@@ -81,6 +85,79 @@ namespace Akka.Serialization
         /// <param name="type">The type of object contained in the array</param>
         /// <returns>The object contained in the array</returns>
         public abstract object FromBinary(byte[] bytes, Type type);
+
+        /// <summary>
+        /// Utility to be used by implementors to create a manifest from the type.
+        /// The manifest is used to look up the type on deserialization.
+        /// Returns the type qualified name including namespace and assembly, but not assembly version.
+        /// </summary>
+        /// <remarks>
+        /// See <see cref="Type.GetType(string)"/> for details on how a type is looked up
+        /// from a name. In particular, if the (partial) assembly name is not included
+        /// only the assembly calling <see cref="Type.GetType(string)"/> is searched.
+        /// If the (partial) assembly name is included, it searches in the specified assembly.
+        /// </remarks>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        protected static string TypeQualifiedNameForManifest(Type type)
+        {
+            return type == null ? string.Empty : string.Format("{0},{1}", type.FullName, type.Assembly.GetName().Name);
+        }
+    }
+
+    public abstract class SerializerWithStringManifest : Serializer
+    {
+        protected SerializerWithStringManifest(ExtendedActorSystem system) : base(system)
+        {
+        }
+
+        public sealed override bool IncludeManifest { get { return true; } }
+
+        public sealed override object FromBinary(byte[] bytes, Type type)
+        {
+            var manifest = TypeQualifiedNameForManifest(type);
+            return FromBinary(bytes, manifest);
+        }
+
+        /// <summary>
+        /// Produces an object from an array of bytes, with an optional type-hint.
+        /// </summary>
+        public abstract object FromBinary(byte[] binary, string manifest);
+
+        /// <summary>
+        /// Return the manifest (type hint) that will be provided in the fromBinary method.
+        /// Return <see cref="string.Empty"/> if not needed.
+        /// </summary>
+        public abstract string Manifest(object o);
+    }
+
+    /// <summary>
+    /// INTERNAL API.
+    /// </summary>
+    public static class SerializerIdentifierHelper
+    {
+        public const string SerializationIdentifiers = "akka.actor.serialization-identifiers";
+
+        /// <summary></summary>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown if the system couldn't find the given serializer <paramref name="type"/> id in the configuration.
+        /// </exception>
+        public static int GetSerializerIdentifierFromConfig(Type type, ExtendedActorSystem system)
+        {
+            var config = system.Settings.Config.GetConfig(SerializationIdentifiers);
+            var identifiers = config.AsEnumerable()
+                .ToDictionary(pair => Type.GetType(pair.Key, true), pair => pair.Value.GetInt());
+
+            int value;
+            if (identifiers.TryGetValue(type, out value))
+            {
+                return value;
+            }
+            else
+            {
+                throw new ArgumentException($"Couldn't find serializer id for [{type}] under [{SerializationIdentifiers}] HOCON path", nameof(type));
+            }
+        }
     }
 }
 

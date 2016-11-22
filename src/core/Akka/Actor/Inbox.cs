@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="Inbox.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -229,9 +229,9 @@ namespace Akka.Actor
         object ReceiveWhere(Predicate<object> predicate, TimeSpan timeout);
 
         /// <summary>
-        /// Makes an internal actor act as a proxy of given <paramref name="message"/>, 
-        /// which will be send to given <paramref cref="target"/> actor. It means, 
-        /// that all <paramref name="target"/>'s replies will be sent to current inbox instead.
+        /// Makes an internal actor act as a proxy of a given <paramref name="message"/>, 
+        /// which is sent to a given target actor. It means, that all <paramref name="target"/>'s
+        /// replies will be sent to current inbox instead.
         /// </summary>
         void Send(IActorRef target, object message);
     }
@@ -306,6 +306,10 @@ namespace Akka.Actor
         /// <remarks>
         /// Don't use this method within actors, since it block current thread until a message is received.
         /// </remarks>
+        /// <exception cref="TimeoutException">
+        /// This exception is thrown if the inbox received a <see cref="Status.Failure"/> response message or
+        /// it didn't receive a response message by the given <paramref name="timeout"/> .
+        /// </exception>>
         public object Receive(TimeSpan timeout)
         {
             var task = ReceiveAsync(timeout);
@@ -317,6 +321,11 @@ namespace Akka.Actor
             return ReceiveWhere(predicate, _defaultTimeout);
         }
 
+        /// <summary></summary>
+        /// <exception cref="TimeoutException">
+        /// This exception is thrown if the inbox received a <see cref="Status.Failure"/> response message or
+        /// it didn't receive a response message by the given <paramref name="timeout"/> .
+        /// </exception>>
         public object ReceiveWhere(Predicate<object> predicate, TimeSpan timeout)
         {
             var task = Receiver.Ask(new Select(_system.Scheduler.MonotonicClock + timeout, predicate), Timeout.InfiniteTimeSpan);
@@ -352,15 +361,14 @@ namespace Akka.Actor
                 var received = task.Result as Status.Failure;
                 if (received != null && received.Cause is TimeoutException)
                 {
-                    var reason = string.Format("Inbox {0} received a status failure response message: {1}", Receiver.Path, received.Cause.Message);
-                    throw new TimeoutException(reason, received.Cause);
+                    throw new TimeoutException(
+                        $"Inbox {Receiver.Path} received a status failure response message: {received.Cause.Message}", received.Cause);
                 }
 
                 return task.Result;
             }
             
-            var fmt = string.Format("Inbox {0} didn't received a response message in specified timeout {1}", Receiver.Path, timeout);
-            throw new TimeoutException(fmt);
+            throw new TimeoutException($"Inbox {Receiver.Path} didn't receive a response message in specified timeout {timeout}");
         }
     }
 }

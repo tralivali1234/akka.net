@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="Transport.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -11,6 +11,7 @@ using Akka.Actor;
 using Akka.Configuration;
 using Google.ProtocolBuffers;
 using System.Runtime.Serialization;
+using Akka.Event;
 
 namespace Akka.Remote.Transport
 {
@@ -108,7 +109,7 @@ namespace Akka.Remote.Transport
         }
     }
 
-    public sealed class Disassociated : IHandleEvent
+    public sealed class Disassociated : IHandleEvent, IDeadLetterSuppression
     {
         internal readonly DisassociateInfo Info;
 
@@ -190,7 +191,7 @@ namespace Akka.Remote.Transport
     /// <summary>
     /// Marker type for whenever new actors / endpoints are associated with this <see cref="ActorSystem"/> via remoting.
     /// </summary>
-    public interface IAssociationEvent
+    public interface IAssociationEvent : INoSerializationVerificationNeeded
     {
 
     }

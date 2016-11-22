@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="ByteString.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -102,6 +102,11 @@ namespace Akka.IO
                 get { return _bytes[idx]; }
             }
 
+            public sealed override ByteBuffer AsByteBuffer()
+            {
+                return new ByteString1(_bytes).AsByteBuffer();
+            }
+
             public override int Count
             {
                 get { return _bytes.Length; }
@@ -161,9 +166,16 @@ namespace Akka.IO
             {
             }
 
+            /// <summary></summary>
+            /// <exception cref="IndexOutOfRangeException"></exception>
             public override byte this[int idx]
             {
                 get { return _bytes[checkRangeConvert(idx)]; }
+            }
+
+            public sealed override ByteBuffer AsByteBuffer()
+            {
+                return ByteBuffer.Wrap(_bytes, _startIndex, _length);
             }
 
             public override ByteIterator Iterator()
@@ -195,6 +207,8 @@ namespace Akka.IO
                 get { return _length; }
             }
 
+            /// <summary></summary>
+            /// <exception cref="InvalidOperationException"></exception>
             public override ByteString Concat(ByteString that)
             {
                 if (that.IsEmpty) return this;
@@ -248,6 +262,8 @@ namespace Akka.IO
                 _length = length;
             }
 
+            /// <summary></summary>
+            /// <exception cref="IndexOutOfRangeException"></exception>
             public override byte this[int idx]
             {
                 get
@@ -267,18 +283,27 @@ namespace Akka.IO
                 }
             }
 
+            public sealed override ByteBuffer AsByteBuffer()
+            {
+                return Compact().AsByteBuffer();
+            }
+
             public override ByteIterator Iterator()
             {
                 return new ByteIterator.MultiByteIterator(
                         _byteStrings.Select(x => (ByteIterator.ByteArrayIterator) x.Iterator()).ToArray());
             }
 
-			public override IEnumerator<byte> GetEnumerator()
-			{
-				return _byteStrings.SelectMany(byteString => byteString).GetEnumerator();
-			}
+            public override IEnumerator<byte> GetEnumerator()
+            {
+                return _byteStrings.SelectMany(byteString => byteString).GetEnumerator();
+            }
 
-			public override ByteString Concat(ByteString that)
+            /// <summary></summary>
+            /// <exception cref="InvalidOperationException">
+            /// This exception is thrown if this <see cref="ByteString"/> cannot be concatenated with <paramref name="that"/>.
+            /// </exception>
+            public override ByteString Concat(ByteString that)
             {
                 if (that.IsEmpty)
                 {
@@ -308,7 +333,7 @@ namespace Akka.IO
                         return new ByteStrings(Items.Concat(bs.Items).ToArray());
                     }
 
-                    throw new InvalidOperationException("No suitable implementation found for concatenating ByteString of type " + that.GetType());
+                    throw new InvalidOperationException($"No suitable implementation found for concatenating ByteString of type {that.GetType()}");
                 }
             }
 
@@ -356,9 +381,11 @@ namespace Akka.IO
     /// when concatenating and slicing sequences of bytes,
     /// and also providing a thread safe way of working with bytes.
     /// </summary>
-    public abstract partial class ByteString : IReadOnlyList<byte>
+    public abstract partial class ByteString : IReadOnlyList<byte>, IEquatable<ByteString>
     {
         public abstract byte this[int index] { get; }
+
+        public abstract ByteBuffer AsByteBuffer();
 
         protected virtual ByteStringBuilder newBuilder()
         {
@@ -447,6 +474,13 @@ namespace Akka.IO
         public abstract CompactByteString Compact();
         public abstract bool IsCompact();
 
+        /// <summary>
+        /// N/A
+        /// </summary>
+        /// <exception cref="NotSupportedException">
+        /// This exception is thrown automatically since iterators aren't supported in <see cref="ByteString"/>.
+        /// </exception>
+        /// <returns>N/A</returns>
         public virtual IEnumerator<byte> GetEnumerator()
         {
             throw new NotSupportedException("Method iterator is not implemented in ByteString");
@@ -504,6 +538,23 @@ namespace Akka.IO
         public static ByteString Create(byte[] buffer)
         {
             return Create(buffer, 0, buffer.Length);
+        }
+
+        public bool Equals(ByteString other)
+        {
+            if (ReferenceEquals(other, null)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            if (Count != other.Count) return false;
+            for (int i = 0; i < Count; i++)
+            {
+                if (this[i] != other[i]) return false;
+            }
+            return true;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ByteString && Equals((ByteString) obj);
         }
     }
 
@@ -650,13 +701,13 @@ namespace Akka.IO
         {
             if (byteOrder == ByteOrder.BigEndian)
             {
-                PutByte(Convert.ToByte(x >> 8));
-                PutByte(Convert.ToByte(x >> 0));
+                PutByte((byte)(x >> 8));
+                PutByte((byte)(x >> 0));
             }
             else
             {
-                PutByte(Convert.ToByte(x >> 0));
-                PutByte(Convert.ToByte(x >> 8));
+                PutByte((byte)(x >> 0));
+                PutByte((byte)(x >> 8));
             }
             return this;
         }

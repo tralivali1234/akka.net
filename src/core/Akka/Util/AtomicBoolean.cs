@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="AtomicBoolean.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -16,7 +16,7 @@ namespace Akka.Util
     /// without any explicit locking. .NET's strong memory on write guarantees might already enforce
     /// this ordering, but the addition of the MemoryBarrier guarantees it.
     /// </summary>
-    internal class AtomicBoolean
+    public class AtomicBoolean
     {
         private const int _falseValue = 0;
         private const int _trueValue = 1;
@@ -55,7 +55,17 @@ namespace Akka.Util
         {
             var expectedInt = expected ? _trueValue : _falseValue;
             var newInt = newValue ? _trueValue : _falseValue;
-            return Interlocked.CompareExchange(ref _value, newInt, expectedInt) == expectedInt;           
+            return Interlocked.CompareExchange(ref _value, newInt, expectedInt) == expectedInt;
+        }
+
+        /// <summary>
+        /// Atomically sets the <see cref="Value"/> to <paramref name="newValue"/> and returns the old <see cref="Value"/>.
+        /// </summary>
+        /// <param name="newValue">The new value</param>
+        /// <returns>The old value</returns>
+        public bool GetAndSet(bool newValue)
+        {
+            return Interlocked.Exchange(ref _value, newValue ? _trueValue : _falseValue) == _trueValue;
         }
 
         #region Conversion operators

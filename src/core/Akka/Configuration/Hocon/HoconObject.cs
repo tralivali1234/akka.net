@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="HoconObject.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -74,16 +74,15 @@ namespace Akka.Configuration.Hocon
         }
 
         /// <summary>
-        /// Retrieves the string representation of this element.
+        /// N/A
         /// </summary>
-        /// <returns>The string representation of this element.</returns>
-        /// <exception cref="System.NotImplementedException">
-        /// This element is an object. It is not a string.
-        /// Therefore this method will throw an exception.
+        /// <returns>N/A</returns>
+        /// <exception cref="NotImplementedException">
+        /// This exception is thrown automatically since this element is an object and not a string.
         /// </exception>
         public string GetString()
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("This element is an object and not a string.");
         }
 
         /// <summary>
@@ -96,16 +95,15 @@ namespace Akka.Configuration.Hocon
         }
 
         /// <summary>
-        /// Retrieves a list of elements associated with this element.
+        /// N/A
         /// </summary>
-        /// <returns>A list of elements associated with this element.</returns>
-        /// <exception cref="System.NotImplementedException">
-        /// This element is an object. It is not an array.
-        /// Therefore this method will throw an exception.
+        /// <returns>N/A</returns>
+        /// <exception cref="NotImplementedException">
+        /// This exception is thrown automatically since this element is an object and not an array.
         /// </exception>
         public IList<HoconValue> GetArray()
         {
-            throw new NotImplementedException();
+            throw new NotImplementedException("This element is an object and not an array.");
         }
 
         /// <summary>
@@ -178,6 +176,10 @@ namespace Akka.Configuration.Hocon
             return text;
         }
 
+        /// <summary>
+        /// Merges the specified object into this instance.
+        /// </summary>
+        /// <param name="other">The object to merge into this instance.</param>
         public void Merge(HoconObject other)
         {
             var thisItems = Items;
@@ -202,8 +204,7 @@ namespace Akka.Configuration.Hocon
                     //other key was not present in this object, just copy it over
                     Items.Add(otherItem.Key,otherItem.Value);
                 }
-            }            
+            }
         }
     }
 }
-

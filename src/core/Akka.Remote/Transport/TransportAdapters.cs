@@ -1,7 +1,7 @@
 ﻿//-----------------------------------------------------------------------
 // <copyright file="TransportAdapters.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
-//     Copyright (C) 2013-2015 Akka.NET project <https://github.com/akkadotnet/akka.net>
+//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
 // </copyright>
 //-----------------------------------------------------------------------
 
@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Akka.Actor;
 using Akka.Actor.Internal;
+using Akka.Event;
 
 namespace Akka.Remote.Transport
 {
@@ -244,7 +245,7 @@ namespace Akka.Remote.Transport
     /// <summary>
     /// Marker interface for all transport operations
     /// </summary>
-    internal abstract class TransportOperation
+    internal abstract class TransportOperation : INoSerializationVerificationNeeded
     {
         public static readonly TimeSpan AskTimeout = TimeSpan.FromSeconds(5);
     }
@@ -285,7 +286,7 @@ namespace Akka.Remote.Transport
         public Task<IAssociationEventListener> UpstreamListener { get; private set; }
     }
 
-    internal sealed class DisassociateUnderlying : TransportOperation
+    internal sealed class DisassociateUnderlying : TransportOperation, IDeadLetterSuppression
     {
         public DisassociateUnderlying(DisassociateInfo info = DisassociateInfo.Unknown)
         {
