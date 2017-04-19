@@ -6,6 +6,7 @@
 //-----------------------------------------------------------------------
 
 using System;
+using Akka.Util;
 
 namespace Akka.Remote
 {
@@ -34,8 +35,11 @@ namespace Akka.Remote
 
         #region Static members
 
-		//fixed: sign will no longer flip, but the tickcount will go back down to zero every 24.9 days 
-        public static readonly Clock DefaultClock = () => Environment.TickCount & Int32.MaxValue;
+        /// <summary>
+        /// The default clock implementation used by the <see cref="PhiAccrualFailureDetector"/>
+        /// </summary>
+        /// <returns>A clock instance.</returns>
+        public static readonly Clock DefaultClock = () => MonotonicClock.GetMilliseconds();
 
         #endregion
     }

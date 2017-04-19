@@ -6,25 +6,42 @@
 //-----------------------------------------------------------------------
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using Akka.Actor;
 using Akka.Util.Internal;
 
 namespace Akka.Serialization
 {
-    public class Information
+    /// <summary>
+    /// Serialization information needed for serializing local actor refs.
+    /// </summary>
+    internal class Information
     {
         public Address Address { get; set; }
+
         public ActorSystem System { get; set; }
     }
 
+    /// <summary>
+    /// TBD
+    /// </summary>
     public class Serialization
     {
         [ThreadStatic]
         private static Information _currentTransportInformation;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <typeparam name="T">TBD</typeparam>
+        /// <param name="system">TBD</param>
+        /// <param name="address">TBD</param>
+        /// <param name="action">TBD</param>
+        /// <returns>TBD</returns>
         public static T SerializeWithTransport<T>(ActorSystem system, Address address, Func<T> action)
         {
             _currentTransportInformation = new Information()
@@ -39,18 +56,23 @@ namespace Akka.Serialization
 
         private readonly Serializer _nullSerializer;
 
-        private readonly Dictionary<Type, Serializer> _serializerMap = new Dictionary<Type, Serializer>();
+        private readonly ConcurrentDictionary<Type, Serializer> _serializerMap = new ConcurrentDictionary<Type, Serializer>();
         private readonly Dictionary<int, Serializer> _serializers = new Dictionary<int, Serializer>();
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="system">TBD</param>
         public Serialization(ExtendedActorSystem system)
         {
             System = system;
 
             _nullSerializer = new NullSerializer(system);
-            _serializers.Add(_nullSerializer.Identifier, _nullSerializer);
+            AddSerializer(_nullSerializer);
 
             var serializersConfig = system.Settings.Config.GetConfig("akka.actor.serializers").AsEnumerable().ToList();
             var serializerBindingConfig = system.Settings.Config.GetConfig("akka.actor.serialization-bindings").AsEnumerable().ToList();
+            var serializerSettingsConfig = system.Settings.Config.GetConfig("akka.actor.serialization-settings");
             var namedSerializers = new Dictionary<string, Serializer>();
             foreach (var kvp in serializersConfig)
             {
@@ -62,8 +84,12 @@ namespace Akka.Serialization
                     continue;
                 }
 
-                var serializer = (Serializer)Activator.CreateInstance(serializerType, system);
-                _serializers.Add(serializer.Identifier, serializer);
+                var serializerConfig = serializerSettingsConfig.GetConfig(kvp.Key);
+
+                var serializer = serializerConfig != null
+                    ? (Serializer)Activator.CreateInstance(serializerType, system, serializerConfig)
+                    : (Serializer)Activator.CreateInstance(serializerType, system);
+                AddSerializer(serializer);
                 namedSerializers.Add(kvp.Key, serializer);
             }
 
@@ -88,26 +114,48 @@ namespace Akka.Serialization
                     continue;
                 }
 
-                _serializerMap.Add(messageType, serializer);
+                AddSerializationMap(messageType, serializer);
             }
         }
 
-        public ActorSystem System { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
+        public ActorSystem System { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="serializer">TBD</param>
+        /// <returns>TBD</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddSerializer(Serializer serializer)
         {
             _serializers.Add(serializer.Identifier, serializer);
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="type">TBD</param>
+        /// <param name="serializer">TBD</param>
+        /// <returns>TBD</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddSerializationMap(Type type, Serializer serializer)
         {
-            _serializerMap.Add(type, serializer);
+            _serializerMap[type] = serializer;
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// Deserializes the given array of bytes using the specified serializer id, using the optional type hint to the Serializer.
+        /// </summary>
+        /// <param name="bytes">TBD</param>
+        /// <param name="serializerId">TBD</param>
+        /// <param name="type">TBD</param>
         /// <exception cref="SerializationException">
         /// This exception is thrown if the system cannot find the serializer with the given <paramref name="serializerId"/>.
         /// </exception>
+        /// <returns>The resulting object</returns>
         public object Deserialize(byte[] bytes, int serializerId, Type type)
         {
             Serializer serializer;
@@ -119,11 +167,17 @@ namespace Akka.Serialization
             return serializer.FromBinary(bytes, type);
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// Deserializes the given array of bytes using the specified serializer id, using the optional type hint to the Serializer.
+        /// </summary>
+        /// <param name="bytes">TBD</param>
+        /// <param name="serializerId">TBD</param>
+        /// <param name="manifest">TBD</param>
         /// <exception cref="SerializationException">
         /// This exception is thrown if the system cannot find the serializer with the given <paramref name="serializerId"/>
         /// or it couldn't find the given <paramref name="manifest"/> with the given <paramref name="serializerId"/>.
         /// </exception>
+        /// <returns>The resulting object</returns>
         public object Deserialize(byte[] bytes, int serializerId, string manifest)
         {
             Serializer serializer;
@@ -148,40 +202,71 @@ namespace Akka.Serialization
             return serializer.FromBinary(bytes, type);
         }
 
+        /// <summary>
+        /// Returns the Serializer configured for the given object, returns the NullSerializer if it's null.
+        /// </summary>
+        /// <param name="obj">TBD</param>
+        /// <returns>TBD</returns>
         public Serializer FindSerializerFor(object obj)
         {
-            if (obj == null)
-                return _nullSerializer;
-
-            Type type = obj.GetType();
-            return FindSerializerForType(type);
+            return obj == null ? _nullSerializer : FindSerializerForType(obj.GetType());
         }
 
         //cache to eliminate lots of typeof operator calls
         private readonly Type _objectType = typeof(object);
 
-        /// <summary></summary>
+        /// <summary>
+        /// Returns the configured Serializer for the given Class. The configured Serializer
+        /// is used if the configured class `IsAssignableFrom` from the <see cref="Type">type</see>, i.e.
+        /// the configured class is a super class or implemented interface. In case of
+        /// ambiguity it is primarily using the most specific configured class,
+        /// and secondly the entry configured first.
+        /// </summary>
+        /// <param name="objectType">TBD</param>
         /// <exception cref="SerializationException">
         /// This exception is thrown if the serializer of the given <paramref name="objectType"/> could not be found.
         /// </exception>
+        /// <returns>TBD</returns>
         public Serializer FindSerializerForType(Type objectType)
         {
-            Type type = objectType;
-            //TODO: see if we can do a better job with proper type sorting here - most specific to least specific (object serializer goes last)
-            foreach (var serializerType in _serializerMap)
+            Serializer fullMatchSerializer;
+            if (_serializerMap.TryGetValue(objectType, out fullMatchSerializer))
             {
-                //force deferral of the base "object" serializer until all other higher-level types have been evaluated
-                if (serializerType.Key.IsAssignableFrom(type) && serializerType.Key != _objectType)
-                    return serializerType.Value;
+                return fullMatchSerializer;
             }
+            else
+            {
+                Serializer serializer = null;
+                Type type = objectType;
 
-            //do a final check for the "object" serializer
-            if (_serializerMap.ContainsKey(_objectType) && _objectType.IsAssignableFrom(type))
-                return _serializerMap[_objectType];
+                // TODO: see if we can do a better job with proper type sorting here - most specific to least specific (object serializer goes last)
+                foreach (var serializerType in _serializerMap)
+                {
+                    // force deferral of the base "object" serializer until all other higher-level types have been evaluated
+                    if (serializerType.Key.IsAssignableFrom(type) && serializerType.Key != _objectType)
+                    {
+                        serializer = serializerType.Value;
+                        break;
+                    }
+                }
 
-            throw new SerializationException($"Serializer not found for type {objectType.Name}");
+                // do a final check for the "object" serializer
+                if (serializer == null && _serializerMap.ContainsKey(_objectType))
+                    serializer = _serializerMap[_objectType];
+
+                if (serializer == null)
+                    throw new SerializationException($"Serializer not found for type {objectType.Name}");
+
+                AddSerializationMap(type, serializer);
+                return serializer;
+            }
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="actorRef">TBD</param>
+        /// <returns>TBD</returns>
         public static string SerializedActorPath(IActorRef actorRef)
         {
             if (Equals(actorRef, ActorRefs.NoSender))
@@ -226,7 +311,7 @@ namespace Akka.Serialization
             }
         }
 
-        public Serializer GetSerializerById(int serializerId)
+        internal Serializer GetSerializerById(int serializerId)
         {
             return _serializers[serializerId];
         }

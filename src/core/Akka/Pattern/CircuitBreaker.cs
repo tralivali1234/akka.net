@@ -72,9 +72,18 @@ namespace Akka.Pattern
             }
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public int MaxFailures { get; private set; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan CallTimeout { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan ResetTimeout { get; private set; }
 
         //akka.io implementation is to use nested static classes and access parent member variables
@@ -90,7 +99,7 @@ namespace Akka.Pattern
         /// <param name="maxFailures">Maximum number of failures before opening the circuit</param>
         /// <param name="callTimeout"><see cref="TimeSpan"/> of time after which to consider a call a failure</param>
         /// <param name="resetTimeout"><see cref="TimeSpan"/> of time after which to attempt to close the circuit</param>
-        /// <returns></returns>
+        /// <returns>TBD</returns>
         public static CircuitBreaker Create(int maxFailures, TimeSpan callTimeout, TimeSpan resetTimeout)
         {
             return new CircuitBreaker(maxFailures, callTimeout, resetTimeout);
@@ -102,7 +111,7 @@ namespace Akka.Pattern
         /// <param name="maxFailures">Maximum number of failures before opening the circuit</param>
         /// <param name="callTimeout"><see cref="TimeSpan"/> of time after which to consider a call a failure</param>
         /// <param name="resetTimeout"><see cref="TimeSpan"/> of time after which to attempt to close the circuit</param>
-        /// <returns></returns>
+        /// <returns>TBD</returns>
         public CircuitBreaker(int maxFailures, TimeSpan callTimeout, TimeSpan resetTimeout)
         {
             MaxFailures = maxFailures;
@@ -126,12 +135,12 @@ namespace Akka.Pattern
         /// <summary>
         /// Wraps invocation of asynchronous calls that need to be protected
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="T">TBD</typeparam>
         /// <param name="body">Call needing protected</param>
         /// <returns><see cref="Task"/> containing the call result</returns>
-        public async Task<T> WithCircuitBreaker<T>(Func<Task<T>> body)
+        public Task<T> WithCircuitBreaker<T>(Func<Task<T>> body)
         {
-            return await CurrentState.Invoke<T>(body);
+            return CurrentState.Invoke<T>(body);
         }
 
         /// <summary>
@@ -139,21 +148,21 @@ namespace Akka.Pattern
         /// </summary>
         /// <param name="body">Call needing protected</param>
         /// <returns><see cref="Task"/></returns>
-        public async Task WithCircuitBreaker(Func<Task> body)
+        public Task WithCircuitBreaker(Func<Task> body)
         {
-            await CurrentState.Invoke(body);
+            return CurrentState.Invoke(body);
         }
 
         /// <summary>
         /// The failure will be recorded farther down.
         /// </summary>
-        /// <param name="body"></param>
+        /// <param name="body">TBD</param>
         public void WithSyncCircuitBreaker(Action body)
         {
             var cbTask = WithCircuitBreaker(() => Task.Factory.StartNew(body));
             if (!cbTask.Wait(CallTimeout))
             {
-                //throw new TimeoutException( string.Format( "Execution did not complete within the time alotted {0} ms", CallTimeout.TotalMilliseconds ) );
+                //throw new TimeoutException( string.Format( "Execution did not complete within the time allotted {0} ms", CallTimeout.TotalMilliseconds ) );
             }
             if (cbTask.Exception != null)
             {
@@ -172,8 +181,8 @@ namespace Akka.Pattern
         /// </code>
         ///
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="body"></param>
+        /// <typeparam name="T">TBD</typeparam>
+        /// <param name="body">TBD</param>
         /// <returns><typeparamref name="T"/> or default(<typeparamref name="T"/>)</returns>
         public T WithSyncCircuitBreaker<T>(Func<T> body)
         {

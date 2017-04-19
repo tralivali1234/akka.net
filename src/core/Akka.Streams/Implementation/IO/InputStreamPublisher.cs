@@ -22,10 +22,20 @@ namespace Akka.Streams.Implementation.IO
     /// </summary>
     internal class InputStreamPublisher : Actors.ActorPublisher<ByteString>
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="inputstream">TBD</param>
+        /// <param name="completionSource">TBD</param>
+        /// <param name="chunkSize">TBD</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown when the specified <paramref name="chunkSize"/> is less than or equal to zero.
+        /// </exception>
+        /// <returns>TBD</returns>
         public static Props Props(Stream inputstream, TaskCompletionSource<IOResult> completionSource, int chunkSize)
         {
             if (chunkSize <= 0)
-                throw new ArgumentException($"chunkSize must be > 0 was {chunkSize}");
+                throw new ArgumentException($"chunkSize must be > 0 was {chunkSize}", nameof(chunkSize));
 
             return Actor.Props.Create(()=> new InputStreamPublisher(inputstream, completionSource, chunkSize)).WithDeploy(Deploy.Local);
         }
@@ -42,6 +52,12 @@ namespace Akka.Streams.Implementation.IO
         private readonly ILoggingAdapter _log;
         private long _readBytesTotal;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="inputstream">TBD</param>
+        /// <param name="completionSource">TBD</param>
+        /// <param name="chunkSize">TBD</param>
         public InputStreamPublisher(Stream inputstream, TaskCompletionSource<IOResult> completionSource, int chunkSize)
         {
             _inputstream = inputstream;
@@ -51,6 +67,11 @@ namespace Akka.Streams.Implementation.IO
             _log = Context.GetLogger();
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="message">TBD</param>
+        /// <returns>TBD</returns>
         protected override bool Receive(object message)
             => message.Match()
                     .With<Request>(ReadAndSignal)
@@ -58,6 +79,9 @@ namespace Akka.Streams.Implementation.IO
                     .With<Cancel>(() => Context.Stop(Self))
                     .WasHandled;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         protected override void PostStop()
         {
             base.PostStop();

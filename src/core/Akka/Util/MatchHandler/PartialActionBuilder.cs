@@ -9,7 +9,10 @@ using System;
 
 namespace Akka.Tools.MatchHandler
 {
-    public class PartialActionBuilder : IPartialActionBuilder
+    /// <summary>
+    /// TBD
+    /// </summary>
+    internal class PartialActionBuilder : IPartialActionBuilder
     {
         /// <summary>
         /// The maximum number of arguments=15 not including the obligatory first value argument in a partial action. 

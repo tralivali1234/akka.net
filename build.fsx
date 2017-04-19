@@ -19,7 +19,7 @@ cd __SOURCE_DIRECTORY__
 
 let product = "Akka.NET"
 let authors = [ "Akka.NET Team" ]
-let copyright = "Copyright © 2013-2016 Akka.NET Team"
+let copyright = "Copyright © 2013-2017 Akka.NET Team"
 let company = "Akka.NET Team"
 let description = "Akka.NET is a port of the popular Java/Scala framework Akka to .NET"
 let tags = ["akka";"actors";"actor";"model";"Akka";"concurrency"]
@@ -222,8 +222,11 @@ Target "CopyOutput" <| fun _ ->
       "contrib/testkits/Akka.TestKit.Xunit" 
       "contrib/testkits/Akka.TestKit.Xunit2" 
       "contrib/serializers/Akka.Serialization.Wire" 
+      "contrib/serializers/Akka.Serialization.Hyperion"
       "contrib/cluster/Akka.Cluster.Tools"
       "contrib/cluster/Akka.Cluster.Sharding"
+      "contrib/cluster/Akka.DistributedData"
+      "contrib/cluster/Akka.DistributedData.LightningDB"
       ]
     |> List.iter copyOutput
 
@@ -307,7 +310,9 @@ Target "MultiNodeTests" <| fun _ ->
     let multiNodeTestPath = findToolInSubPath "Akka.MultiNodeTestRunner.exe" (currentDirectory @@ "bin" @@ "core" @@ "Akka.MultiNodeTestRunner*")
     let multiNodeTestAssemblies = !! "src/**/bin/Release/Akka.Remote.Tests.MultiNode.dll" ++
                                      "src/**/bin/Release/Akka.Cluster.Tests.MultiNode.dll" ++
-                                     "src/**/bin/Release/Akka.Cluster.Tools.Tests.MultiNode.dll"
+                                     "src/**/bin/Release/Akka.Cluster.Tools.Tests.MultiNode.dll" ++
+                                     "src/**/bin/Release/Akka.Cluster.Sharding.Tests.MultiNode.dll" ++
+                                     "src/**/bin/Release/Akka.DistributedData.Tests.MultiNode.dll"
 
     printfn "Using MultiNodeTestRunner: %s" multiNodeTestPath
 
@@ -344,18 +349,25 @@ Target "NBench" <| fun _ ->
 
     let runNBench assembly =
         let spec = getBuildParam "spec"
+        let teamcityStr = (getBuildParam "teamcity")
+        let enableTeamCity = 
+            match teamcityStr with
+            | null -> false
+            | "" -> false
+            | _ -> bool.Parse teamcityStr
 
         let args = new StringBuilder()
                 |> append assembly
                 |> append (sprintf "output-directory=\"%s\"" perfOutput)
                 |> append (sprintf "concurrent=\"%b\"" true)
                 |> append (sprintf "trace=\"%b\"" true)
+                |> append (sprintf "teamcity=\"%b\"" enableTeamCity)
                 |> toText
 
         let result = ExecProcess(fun info -> 
             info.FileName <- nbenchTestPath
             info.WorkingDirectory <- (Path.GetDirectoryName (FullName nbenchTestPath))
-            info.Arguments <- args) (System.TimeSpan.FromMinutes 15.0) (* Reasonably long-running task. *)
+            info.Arguments <- args) (System.TimeSpan.FromMinutes 45.0) (* Reasonably long-running task. *)
         if result <> 0 then failwithf "NBench.Runner failed. %s %s" nbenchTestPath args
     
     nbenchTestAssemblies |> Seq.iter (runNBench)
@@ -377,29 +389,31 @@ module Nuget =
         | "Akka" -> []
         | "Akka.Cluster" -> ["Akka.Remote", release.NugetVersion]
         | "Akka.Cluster.TestKit" -> ["Akka.Remote.TestKit", release.NugetVersion; "Akka.Cluster", release.NugetVersion]
-        | "Akka.Cluster.Sharding" -> ["Akka.Cluster.Tools", preReleaseVersion; "Akka.Persistence", preReleaseVersion]
+        | "Akka.Cluster.Sharding" -> ["Akka.Cluster.Tools", release.NugetVersion; "Akka.Persistence", preReleaseVersion]
         | "Akka.Cluster.Tools" -> ["Akka.Cluster", release.NugetVersion]
         | "Akka.MultiNodeTestRunner" -> [] // all binaries for the multinodetest runner have to be included locally
         | "Akka.Persistence.TestKit" -> ["Akka.Persistence", preReleaseVersion; "Akka.TestKit.Xunit2", release.NugetVersion]
-        | "Akka.Persistence.Query" -> ["Akka.Persistence", preReleaseVersion; "Akka.Streams", preReleaseVersion]
+        | "Akka.Persistence.Query" -> ["Akka.Persistence", preReleaseVersion; "Akka.Streams", release.NugetVersion]
         | "Akka.Persistence.Query.Sql" -> ["Akka.Persistence.Query", preReleaseVersion; "Akka.Persistence.Sql.Common", preReleaseVersion]
-        | "Akka.Persistence.Sql.TestKit" -> ["Akka.Persistence.Query.Sql", preReleaseVersion; "Akka.Persistence.TestKit", preReleaseVersion; "Akka.Streams.TestKit", preReleaseVersion]
+        | "Akka.Persistence.Sql.TestKit" -> ["Akka.Persistence.Query.Sql", preReleaseVersion; "Akka.Persistence.TestKit", preReleaseVersion; "Akka.Streams.TestKit", release.NugetVersion]
         | persistence when (persistence.Contains("Sql") && not (persistence.Equals("Akka.Persistence.Sql.Common"))) -> ["Akka.Persistence.Sql.Common", preReleaseVersion]
         | persistence when (persistence.StartsWith("Akka.Persistence.")) -> ["Akka.Persistence", preReleaseVersion]
         | "Akka.DI.TestKit" -> ["Akka.DI.Core", release.NugetVersion; "Akka.TestKit.Xunit2", release.NugetVersion]
         | testkit when testkit.StartsWith("Akka.TestKit.") -> ["Akka.TestKit", release.NugetVersion]
         | "Akka.Remote.TestKit" -> ["Akka.Remote", release.NugetVersion; "Akka.TestKit.Xunit2", release.NugetVersion;]
         | "Akka.Streams" -> ["Akka", release.NugetVersion]
-        | "Akka.Streams.TestKit" -> ["Akka.Streams", preReleaseVersion; "Akka.TestKit", release.NugetVersion]
+        | "Akka.Streams.TestKit" -> ["Akka.Streams", release.NugetVersion; "Akka.TestKit", release.NugetVersion]
         | _ -> ["Akka", release.NugetVersion]
 
     // used to add -pre suffix to pre-release packages
     let getProjectVersion project =
       match project with
       | "Akka.Serialization.Wire" -> preReleaseVersion
-      | cluster when (cluster.StartsWith("Akka.Cluster.") && not (cluster.EndsWith("TestKit"))) -> preReleaseVersion
+      | "Akka.Serialization.Hyperion" -> preReleaseVersion
+      | "Akka.Cluster.Sharding" -> preReleaseVersion
       | persistence when persistence.StartsWith("Akka.Persistence") -> preReleaseVersion
-      | streams when streams.StartsWith("Akka.Streams") -> preReleaseVersion
+      | "Akka.DistributedData" -> preReleaseVersion
+      | "Akka.DistributedData.LightningDB" -> preReleaseVersion
       | _ -> release.NugetVersion
 
 open Nuget

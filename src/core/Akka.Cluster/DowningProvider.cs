@@ -13,7 +13,7 @@ namespace Akka.Cluster
 {
     /// <summary>
     /// API for plugins that will handle downing of cluster nodes. Concrete plugins must subclass and
-    /// have a public one argument constructor accepting an [[akka.actor.ActorSystem]].
+    /// have a public one argument constructor accepting an <see cref="ActorSystem"/>.
     /// </summary>
     public interface IDowningProvider
     {
@@ -46,17 +46,38 @@ namespace Akka.Cluster
     {
         private readonly ActorSystem _system;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="system">TBD</param>
         public NoDowning(ActorSystem system)
         {
             _system = system;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan DownRemovalMargin => Cluster.Get(_system).Settings.DownRemovalMargin;
+
+        /// <summary>
+        /// TBD
+        /// </summary>
         public Props DowningActorProps => null;
     }
 
+    /// <summary>
+    /// TBD
+    /// </summary>
     internal static class DowningProvider
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="downingProviderType">TBD</param>
+        /// <param name="system">TBD</param>
+        /// <exception cref="ConfigurationException">TBD</exception>
+        /// <returns>TBD</returns>
         public static IDowningProvider Load(Type downingProviderType, ActorSystem system)
         {
             var extendedSystem = system as ExtendedActorSystem;

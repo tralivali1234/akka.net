@@ -22,8 +22,15 @@ namespace Akka.Actor
         /// </summary>
         public class Success : Status
         {
+            /// <summary>
+            /// TBD
+            /// </summary>
             public readonly object Status;
 
+            /// <summary>
+            /// TBD
+            /// </summary>
+            /// <param name="status">TBD</param>
             public Success(object status)
             {
                 Status = status;
@@ -36,13 +43,24 @@ namespace Akka.Actor
         /// </summary>
         public class Failure : Status
         {
+            /// <summary>
+            /// TBD
+            /// </summary>
             public readonly Exception Cause;
 
+            /// <summary>
+            /// TBD
+            /// </summary>
+            /// <param name="cause">TBD</param>
             public Failure(Exception cause)
             {
                 Cause = cause;
             }
 
+            /// <summary>
+            /// TBD
+            /// </summary>
+            /// <returns>TBD</returns>
             public override string ToString()
             {
                 return "Failure: " + Cause.ToString();
@@ -55,15 +73,6 @@ namespace Akka.Actor
     /// </summary>
     public interface ILogReceive
     {
-    }
-
-    /// <summary>
-    /// Interface used on Actors that have an explicit requirement for a logger
-    /// </summary>
-    [Obsolete()]
-    public interface IActorLogging
-    {
-        ILoggingAdapter Log { get; }
     }
 
     /// <summary>
@@ -124,7 +133,8 @@ namespace Akka.Actor
         /// </exception>
         IActorContext IInternalActor.ActorContext
         {
-            get {
+            get
+            {
                 return Context;
             }
         }
@@ -149,10 +159,16 @@ namespace Akka.Actor
             }
         }
 
-        internal protected virtual bool AroundReceive(Receive receive, object message)
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="receive">TBD</param>
+        /// <param name="message">TBD</param>
+        /// <returns>TBD</returns>
+        protected internal virtual bool AroundReceive(Receive receive, object message)
         {
             var wasHandled = receive(message);
-            if(!wasHandled)
+            if (!wasHandled)
             {
                 Unhandled(message);
             }
@@ -163,6 +179,7 @@ namespace Akka.Actor
         ///     Processor for user defined messages.
         /// </summary>
         /// <param name="message">The message.</param>
+        /// <returns>TBD</returns>
         protected abstract bool Receive(object message);
 
         /// <summary>
@@ -183,21 +200,11 @@ namespace Akka.Actor
         protected virtual void Unhandled(object message)
         {
             var terminatedMessage = message as Terminated;
-            if(terminatedMessage != null)
+            if (terminatedMessage != null)
             {
                 throw new DeathPactException(terminatedMessage.ActorRef);
             }
             Context.System.EventStream.Publish(new UnhandledMessage(message, Sender, Self));
-        }
-
-
-        [Obsolete("Use Become or BecomeStacked instead. This method will be removed in future versions")]
-        protected void Become(Receive receive, bool discardOld = true)
-        {
-            if(discardOld)
-                Context.Become(receive);
-            else
-                Context.BecomeStacked(receive);
         }
 
         /// <summary>
@@ -229,22 +236,22 @@ namespace Akka.Actor
             Context.UnbecomeStacked();
         }
 
-        [Obsolete("Use UnbecomeStacked instead. This method will be removed in future versions")]
-        protected void Unbecome()
-        {
-            UnbecomeStacked();
-        }
-
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="self">TBD</param>
         internal void Clear(IActorRef self)
         {
             _clearedSelf = self;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         internal void Unclear()
         {
             _clearedSelf = null;
         }
-
 
         /// <summary>
         /// <para>

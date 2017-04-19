@@ -12,7 +12,11 @@ using System.Reflection.Emit;
 
 namespace Akka.Tools.MatchHandler
 {
-    public class MatchBuilder<TItem>
+    /// <summary>
+    /// TBD
+    /// </summary>
+    /// <typeparam name="TItem">TBD</typeparam>
+    internal class MatchBuilder<TItem>
     {
         //This class works by collecting all handlers.
         //By creating a signature, made up of all types [Type], and types-of-handlers [HandlerKind], we can use the same code
@@ -44,6 +48,7 @@ namespace Akka.Tools.MatchHandler
         /// <summary>
         /// Initializes a new instance of the <see cref="MatchBuilder{TItem}"/> class.
         /// </summary>
+        /// <param name="compiler">TBD</param>
         /// <exception cref="ArgumentNullException">
         /// This exception is thrown if the given <paramref name="compiler"/> is undefined.
         /// </exception>
@@ -166,6 +171,13 @@ namespace Akka.Tools.MatchHandler
             return partialAction;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="typeBuilder">TBD</param>
+        /// <param name="methodName">TBD</param>
+        /// <param name="attributes">TBD</param>
+        /// <returns>TBD</returns>
         public void BuildToMethod(TypeBuilder typeBuilder, string methodName, MethodAttributes attributes = MethodAttributes.Public | MethodAttributes.Static)
         {
             _compiler.CompileToMethod(_typeHandlers, _arguments, new MatchBuilderSignature(_signature), typeBuilder, methodName, methodAttributes: attributes);
@@ -246,8 +258,15 @@ namespace Akka.Tools.MatchHandler
         }
     }
 
-    public class MatchBuilder : MatchBuilder<object>
+    /// <summary>
+    /// TBD
+    /// </summary>
+    internal class MatchBuilder : MatchBuilder<object>
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="compiler">TBD</param>
         public MatchBuilder(IMatchCompiler<object> compiler)
             : base(compiler)
         {

@@ -31,7 +31,8 @@ namespace Akka.Actor
         ///     Processor for user defined messages.
         /// </summary>
         /// <param name="message">The message.</param>
-        protected override sealed bool Receive(object message)
+        /// <returns>TBD</returns>
+        protected sealed override bool Receive(object message)
         {
             MethodInfo method = GetType().GetMethod("Handle", new[] {message.GetType()});
             if (method == null)

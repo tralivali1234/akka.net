@@ -1,3 +1,119 @@
+#### 1.2.0 April 11 2017 ####
+**Feature Release for Akka.NET**
+Akka.NET 1.2 is a major feature release that introduces the following major changes:
+
+**Akka.Remote now uses [DotNetty](https://github.com/azure/dotnetty) for its transport layer**
+The biggest change for 1.2 is the removal of Helios 2.0 as the default transport and the introduction of DotNetty. The new DotNetty transport is fully backwards compatible with the Helios 1.4 and 2.* transports, so you should be able to upgrade from any Akka.NET 1.* application to 1.2 without any downtime. All of the `helios.tcp` HOCON is also supported by the DotNetty transport, so none of that needs to updated for the DotNetty transport to work out of the box.
+
+In addition, the DotNetty transport supports TLS, which can be enabled via the following HOCON:
+
+```
+akka {
+  loglevel = DEBUG
+  actor {
+    provider = Akka.Remote.RemoteActorRefProvider,Akka.Remote
+  }
+  remote {
+    dot-netty.tcp {
+      port = 0
+      hostname = 127.0.0.1
+      enable-ssl = true
+      log-transport = true
+      ssl {
+        suppress-validation = true
+        certificate {
+          # valid ssl certificate must be installed on both hosts
+          path = "<valid certificate path>" 
+          password = "<certificate password>"
+          # flags is optional: defaults to "default-flag-set" key storage flag
+          # other available storage flags:
+          #   exportable | machine-key-set | persist-key-set | user-key-set | user-protected
+          flags = [ "default-flag-set" ] 
+        }
+      }
+    }
+  }
+}
+```
+
+You can [read more about Akka.Remote's TLS support here](http://getakka.net/docs/remoting/security#akka-remote-with-tls-transport-layer-security-).
+
+See [the complete DotNetty transport HOCON here](https://github.com/akkadotnet/akka.net/blob/dev/src/core/Akka.Remote/Configuration/Remote.conf#L318).
+
+**Akka.Streams and Akka.Cluster.Tools RTMed**
+Akka.Streams and Akka.Cluster.Tools have graduated from beta status to stable modules and their interfaces are now considered to be stable.
+
+**CoordinatedShutdown**
+One of the major improvements in Akka.NET 1.2 is the addition of the new `CoordinatedShutdown` plugin, which is designed to make it easier for nodes that are running Akka.Cluster to automatically exit a cluster gracefully whenever `ActorSystem.Terminate` is called or when the process the node is running in attempts to exit. `CoordinatedShutdown` is fully extensible and can be used to schedule custom shutdown operations as part of `ActorSystem` termination.
+
+You can [read more about how to use `CoordinatedShutdown` here](http://getakka.net/docs/working-with-actors/coordinated-shutdown).
+
+**Additional Changes**
+In addition to the above changes, there have been a large number of performance improvements, bug fixes, and documentation improvements made to Akka.NET in 1.2. [Read the full list of changes in Akka.NET 1.2 here](https://github.com/akkadotnet/akka.net/milestone/13).
+
+| COMMITS | LOC+ | LOC- | AUTHOR |
+| --- | --- | --- | --- |
+| 17 | 4840 | 4460 | Alex Valuyskiy |
+| 16 | 4046 | 1144 | Aaron Stannard |
+| 12 | 8591 | 2984 | Sean Gilliam |
+| 6 | 971 | 1300 | Sergey |
+| 5 | 6787 | 2073 | Bartosz Sypytkowski |
+| 4 | 6461 | 8403 | Arjen Smits |
+| 4 | 333 | 125 | ravengerUA |
+| 3 | 71 | 65 | Marc Piechura |
+| 3 | 300 | 24 | Nick Chamberlain |
+| 2 | 79 | 40 | Maxim Salamatko |
+| 2 | 305 | 20 | Ismael Hamed |
+| 1 | 136 | 12 | Sergey Kostrukov |
+| 1 | 1015 | 45 | Lukas Rieger |
+| 1 | 1 | 0 | siudeks |
+
+#### 1.1.3 January 22 2017 ####
+**Maintenance release for Akka.NET v1.1**
+
+Akka.NET v1.1.3 features some new libraries and an enormous number of bug fixes.
+
+**Akka.DistributedData Beta**
+First, we've introduced an alpha of a new module intended for use with Akka.Cluster: Akka.DistributedData. The goal of this library is to make it possible to concurrently read and write replicated copies of the same entity across different nodes in the cluster using conflict-free replicated data types, often referred to as "CRDTs." These replicas can eventually be merged together in a fully consistent manner and are excellent choices for applications that require a high level of availability and partition tolerance.
+
+The library is still a bit of a work in progress at the moment, but you are free to use it via the following command:
+
+```
+PS> Install-Package Akka.DistributedData -pre
+```
+
+**Akka.Serialization.Wire Deprecated; Replaced with Akka.Serialization.Hyperion**
+Wire recently changed its license to GPLv3, which is a poor fit for a technology like Akka.NET. Therefore, our default serializer beginning in Akka.NET 1.5 will be [Hyperion](https://github.com/akkadotnet/Hyperion) instead. You can see how to set it up here: http://getakka.net/docs/Serialization#how-to-setup-hyperion-as-default-serializer
+
+**Other bug fixes, performance improvements, and changes**
+You can [see the full list of changes in Akka.NET 1.1.3 here](https://github.com/akkadotnet/akka.net/milestone/12).
+
+| COMMITS | LOC+ | LOC- | AUTHOR |
+| --- | --- | --- | --- |
+| 19 | 878 | 228 | Aaron Stannard |
+| 10 | 41654 | 3428 | Sean Gilliam |
+| 5 | 11983 | 4543 | Marc Piechura |
+| 4 | 37 | 33 | Arjen Smits |
+| 4 | 12742 | 300 | Bartosz Sypytkowski |
+| 3 | 144 | 74 | Max |
+| 2 | 99 | 8 | ZigMeowNyan |
+| 2 | 7 | 7 | zbynek001 |
+| 2 | 4 | 2 | Andrey Leskov |
+| 2 | 225 | 767 | Alex Valuyskiy |
+| 2 | 212 | 8 | Gordey Doronin |
+| 1 | 8 | 499 | Sean Farrow |
+| 1 | 5 | 5 | tomanekt |
+| 1 | 4 | 2 | Andrew Young |
+| 1 | 3 | 2 | boriskreminskimoldev |
+| 1 | 28 | 3 | Roman Eisendle |
+| 1 | 24 | 36 | Maxim Salamatko |
+| 1 | 2 | 2 | Jeff |
+| 1 | 190 | 38 | Sergey |
+| 1 | 15 | 9 | voltcode |
+| 1 | 12 | 2 | Alexander Pantyukhin |
+| 1 | 107 | 0 | Mikhail Kantarovskiy |
+| 1 | 101 | 0 | derrickcrowne |
+
 #### 1.1.2 September 21 2016 ####
 **Maintenance release for Akka.NET v1.1**
 

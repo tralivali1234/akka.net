@@ -6,12 +6,7 @@
 //-----------------------------------------------------------------------
 
 using Akka.Actor;
-#if MONO
-using TQueue = Akka.Util.MonoConcurrentQueue<Akka.Actor.Envelope>;
-#else
 using TQueue = System.Collections.Concurrent.ConcurrentQueue<Akka.Actor.Envelope>;
-
-#endif
 
 namespace Akka.Dispatch.MessageQueues
 {
@@ -20,30 +15,31 @@ namespace Akka.Dispatch.MessageQueues
     {
         private readonly TQueue _queue = new TQueue();
 
+        /// <inheritdoc cref="IMessageQueue"/>
         public bool HasMessages
         {
-#if MONO
-            get { return _queue.Count > 0; }
-#else
             get { return !_queue.IsEmpty; }
-#endif
         }
 
+        /// <inheritdoc cref="IMessageQueue"/>
         public int Count
         {
             get { return _queue.Count; }
         }
 
+        /// <inheritdoc cref="IMessageQueue"/>
         public void Enqueue(IActorRef receiver, Envelope envelope)
         {
             _queue.Enqueue(envelope);
         }
 
+        /// <inheritdoc cref="IMessageQueue"/>
         public bool TryDequeue(out Envelope envelope)
         {
             return _queue.TryDequeue(out envelope);
         }
 
+        /// <inheritdoc cref="IMessageQueue"/>
         public void CleanUp(IActorRef owner, IMessageQueue deadletters)
         {
             Envelope msg;

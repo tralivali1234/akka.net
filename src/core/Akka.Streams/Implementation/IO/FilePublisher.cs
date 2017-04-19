@@ -26,15 +26,33 @@ namespace Akka.Streams.Implementation.IO
     /// </summary>
     internal class FilePublisher : Actors.ActorPublisher<ByteString>
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="f">TBD</param>
+        /// <param name="completionPromise">TBD</param>
+        /// <param name="chunkSize">TBD</param>
+        /// <param name="initialBuffer">TBD</param>
+        /// <param name="maxBuffer">TBD</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown when one of the following conditions is met.
+        /// 
+        /// <ul>
+        /// <li>The specified <paramref name="chunkSize"/> is less than or equal to zero.</li>
+        /// <li>The specified <paramref name="initialBuffer"/> is less than or equal to zero.</li>
+        /// <li>The specified <paramref name="maxBuffer"/> is less than the specified <paramref name="initialBuffer"/>.</li>
+        /// </ul>
+        /// </exception>
+        /// <returns>TBD</returns>
         public static Props Props(FileInfo f, TaskCompletionSource<IOResult> completionPromise, int chunkSize,
             int initialBuffer, int maxBuffer)
         {
             if (chunkSize <= 0)
-                throw new ArgumentException($"chunkSize must be > 0 (was {chunkSize})");
+                throw new ArgumentException($"chunkSize must be > 0 (was {chunkSize})", nameof(chunkSize));
             if (initialBuffer <= 0)
-                throw new ArgumentException($"initialBuffer must be > 0 (was {initialBuffer})");
+                throw new ArgumentException($"initialBuffer must be > 0 (was {initialBuffer})", nameof(initialBuffer));
             if (maxBuffer < initialBuffer)
-                throw new ArgumentException($"maxBuffer must be >= initialBuffer (was {maxBuffer})");
+                throw new ArgumentException($"maxBuffer must be >= initialBuffer (was {maxBuffer})", nameof(maxBuffer));
 
             return Actor.Props.Create(() => new FilePublisher(f, completionPromise, chunkSize, maxBuffer))
                 .WithDeploy(Deploy.Local);
@@ -56,6 +74,13 @@ namespace Akka.Streams.Implementation.IO
         private IImmutableList<ByteString> _availableChunks = ImmutableList<ByteString>.Empty;
         private FileStream _chan;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="f">TBD</param>
+        /// <param name="completionPromise">TBD</param>
+        /// <param name="chunkSize">TBD</param>
+        /// <param name="maxBuffer">TBD</param>
         public FilePublisher(FileInfo f, TaskCompletionSource<IOResult> completionPromise, int chunkSize, int maxBuffer)
         {
             _f = f;
@@ -69,6 +94,9 @@ namespace Akka.Streams.Implementation.IO
 
         private bool EofEncountered => _eofReachedAtOffset != long.MinValue;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         protected override void PreStart()
         {
             try
@@ -84,6 +112,11 @@ namespace Akka.Streams.Implementation.IO
             base.PreStart();
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="message">TBD</param>
+        /// <returns>TBD</returns>
         protected override bool Receive(object message)
             => message.Match()
                 .With<Request>(() => ReadAndSignal(_maxBuffer))
@@ -149,6 +182,9 @@ namespace Akka.Streams.Implementation.IO
             return chunks;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         protected override void PostStop()
         {
             base.PostStop();

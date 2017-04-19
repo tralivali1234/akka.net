@@ -19,6 +19,10 @@ namespace Akka.Dispatch.MessageQueues
     {
         private readonly BlockingCollection<Envelope> _queue;
 
+        /// <summary>
+        /// Creates a new bounded message queue.
+        /// </summary>
+        /// <param name="config">The configuration for this mailbox.</param>
         public BoundedMessageQueue(Config config)
             : this(config.GetInt("mailbox-capacity"), config.GetTimeSpan("mailbox-push-timeout-time"))
         {
@@ -27,6 +31,8 @@ namespace Akka.Dispatch.MessageQueues
         /// <summary>
         /// Initializes a new instance of the <see cref="BoundedMessageQueue"/> class.
         /// </summary>
+        /// <param name="boundedCapacity">TBD</param>
+        /// <param name="pushTimeOut">TBD</param>
         /// <exception cref="ArgumentException">
         /// This exception is thrown if the given <paramref name="boundedCapacity"/> is negative.
         /// </exception>
@@ -47,10 +53,13 @@ namespace Akka.Dispatch.MessageQueues
             }
         }
 
+        /// <inheritdoc cref="IMessageQueue"/>
         public bool HasMessages => _queue.Count > 0;
 
+        /// <inheritdoc cref="IMessageQueue"/>
         public int Count => _queue.Count;
 
+        /// <inheritdoc cref="IMessageQueue"/>
         public void Enqueue(IActorRef receiver, Envelope envelope)
         {
             if (!_queue.TryAdd(envelope, PushTimeOut)) // dump messages that can't be delivered in-time into DeadLetters
@@ -59,11 +68,13 @@ namespace Akka.Dispatch.MessageQueues
             }
         }
 
+        /// <inheritdoc cref="IMessageQueue"/>
         public bool TryDequeue(out Envelope envelope)
         {
             return _queue.TryTake(out envelope);
         }
 
+        /// <inheritdoc cref="IMessageQueue"/>
         public void CleanUp(IActorRef owner, IMessageQueue deadletters)
         {
             Envelope msg;
@@ -73,6 +84,9 @@ namespace Akka.Dispatch.MessageQueues
             }
         }
 
+        /// <summary>
+        /// The push timeout for this bounded queue.
+        /// </summary>
         public TimeSpan PushTimeOut { get; set; }
     }
 }

@@ -58,7 +58,7 @@ namespace Akka.Actor
         /// <summary>
         /// Initializes a new instance of the <see cref="Cancelable"/> class.
         /// </summary>
-        /// <param name="scheduler"></param>
+        /// <param name="scheduler">TBD</param>
         public Cancelable(IScheduler scheduler)
             : this(scheduler.Advanced)
         {
@@ -68,14 +68,14 @@ namespace Akka.Actor
         /// <summary>
         /// Initializes a new instance of the <see cref="Cancelable"/> class.
         /// </summary>
-        /// <param name="scheduler"></param>
+        /// <param name="scheduler">TBD</param>
         public Cancelable(IActionScheduler scheduler)
             : this(scheduler, new CancellationTokenSource())
         {
             //Intentionally left blank
         }
 
-        [Obsolete("Only to be used from DeprecatedSchedulerExtensions.")] //TODO: Remove this line and make it private when DeprecatedSchedulerExtensions is removed
+        [Obsolete("Only to be used from DeprecatedSchedulerExtensions. [1.0.0]")] //TODO: Remove this line and make it private when DeprecatedSchedulerExtensions is removed
         internal Cancelable(IActionScheduler scheduler, CancellationTokenSource source)
         {
             _source = source;
@@ -83,19 +83,26 @@ namespace Akka.Actor
         }
 
 
-
+        /// <summary>
+        /// TBD
+        /// </summary>
         public bool IsCancellationRequested
         {
             get { return _source.IsCancellationRequested; }
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public CancellationToken Token
         {
             get { return _source.Token; }
         }
 
 
-
+        /// <summary>
+        /// TBD
+        /// </summary>
         public void Cancel()
         {
             Cancel(false);
@@ -175,6 +182,7 @@ namespace Akka.Actor
         /// <summary>
         /// Returns a <see cref="ICancelable"/> that has already been canceled.
         /// </summary>
+        /// <returns>TBD</returns>
         public static ICancelable CreateCanceled()
         {
             return AlreadyCanceledCancelable.Instance;

@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using Akka.Configuration;
 using Akka.Dispatch;
 using Akka.Routing;
+using Akka.Util;
 
 namespace Akka.Actor
 {
@@ -38,7 +39,7 @@ namespace Akka.Actor
         /// <summary>
         /// Injects a system config at the top of the fallback chain
         /// </summary>
-        /// <param name="config"></param>
+        /// <param name="config">TBD</param>
         public void InjectTopLevelFallback(Config config)
         {
             _fallbackConfig = config.SafeWithFallback(_fallbackConfig);
@@ -62,7 +63,7 @@ namespace Akka.Actor
             System = system;
             
             ConfigVersion = Config.GetString("akka.version");
-            ProviderClass = Config.GetString("akka.actor.provider");
+            ProviderClass = GetProviderClass(Config.GetString("akka.actor.provider"));
             var providerType = Type.GetType(ProviderClass);
             if (providerType == null)
                 throw new ConfigurationException($"'akka.actor.provider' is not a valid type name : '{ProviderClass}'");
@@ -114,12 +115,23 @@ namespace Akka.Actor
 
             SchedulerClass = Config.GetString("akka.scheduler.implementation");
             SchedulerShutdownTimeout = Config.GetTimeSpan("akka.scheduler.shutdown-timeout");
-            //TODO: dunno.. we dont have FiniteStateMachines, dont know what the rest is
+            //TODO: dunno.. we don't have FiniteStateMachines, don't know what the rest is
             /*              
                 final val SchedulerClass: String = getString("akka.scheduler.implementation")
                 final val Daemonicity: Boolean = getBoolean("akka.daemonic")                
                 final val DefaultVirtualNodesFactor: Int = getInt("akka.actor.deployment.default.virtual-nodes-factor")
              */
+        }
+
+        private static string GetProviderClass(string provider)
+        {
+            switch (provider)
+            {
+                case "local": return typeof(LocalActorRefProvider).FullName;
+                case "remote": return "Akka.Remote.RemoteActorRefProvider, Akka.Remote";
+                case "cluster": return "Akka.Cluster.ClusterActorRefProvider, Akka.Cluster";
+                default: return provider;
+            }
         }
 
         /// <summary>
@@ -272,6 +284,9 @@ namespace Akka.Actor
         /// <value><c>true</c> if [debug lifecycle]; otherwise, <c>false</c>.</value>
         public bool DebugLifecycle { get; private set; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public bool FsmDebugEvent { get; private set; }
 
         /// <summary>
@@ -284,6 +299,9 @@ namespace Akka.Actor
         /// </summary>
         public string SchedulerClass { get; private set; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan SchedulerShutdownTimeout { get; private set; }
 
         /// <summary>

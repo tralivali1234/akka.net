@@ -1,4 +1,11 @@
-﻿using System;
+﻿//-----------------------------------------------------------------------
+// <copyright file="Hub.cs" company="Akka.NET Project">
+//     Copyright (C) 2015-2016 Lightbend Inc. <http://www.lightbend.com>
+//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
+// </copyright>
+//-----------------------------------------------------------------------
+
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -19,6 +26,9 @@ namespace Akka.Streams.Dsl
     /// </summary>
     public static class MergeHub
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
         internal const int Cancel = -1;
 
         /// <summary>
@@ -33,7 +43,9 @@ namespace Akka.Streams.Dsl
         /// elements). Completed <see cref="Sink{TIn,TMat}"/>s are simply removed. Once the <see cref="Source{TOut,TMat}"/> is cancelled, the Hub is considered closed
         /// and any new producers using the <see cref="Sink{TIn,TMat}"/> will be cancelled.
         /// </summary>
+        /// <typeparam name="T">TBD</typeparam>
         /// <param name="perProducerBufferSize">Buffer space used per producer. Default value is 16.</param>
+        /// <returns>TBD</returns>
         public static Source<T, Sink<T, NotUsed>> Source<T>(int perProducerBufferSize)
             => Dsl.Source.FromGraph(new MergeHub<T>(perProducerBufferSize));
 
@@ -49,10 +61,20 @@ namespace Akka.Streams.Dsl
         /// elements). Completed <see cref="Sink{TIn,TMat}"/>s are simply removed. Once the <see cref="Source{TOut,TMat}"/> is cancelled, the Hub is considered closed
         /// and any new producers using the <see cref="Sink{TIn,TMat}"/> will be cancelled.
         /// </summary>
+        /// <typeparam name="T">TBD</typeparam>
+        /// <returns>TBD</returns>
         public static Source<T, Sink<T, NotUsed>> Source<T>() => Source<T>(16);
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public sealed class ProducerFailed : Exception
         {
+            /// <summary>
+            /// TBD
+            /// </summary>
+            /// <param name="message">TBD</param>
+            /// <param name="cause">TBD</param>
             public ProducerFailed(string message, Exception cause) : base(message, cause)
             {
                 
@@ -63,6 +85,7 @@ namespace Akka.Streams.Dsl
     /// <summary>
     /// INTERNAL API
     /// </summary>
+    /// <typeparam name="T">TBD</typeparam>
     internal class MergeHub<T> : GraphStageWithMaterializedValue<SourceShape<T>, Sink<T, NotUsed>>
     {
         #region Internal classes
@@ -402,6 +425,13 @@ namespace Akka.Streams.Dsl
 
         private readonly int _perProducerBufferSize;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="perProducerBufferSize">TBD</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown when the specified <paramref name="perProducerBufferSize"/> is less than or equal to zero.
+        /// </exception>
         public MergeHub(int perProducerBufferSize)
         {
             if (perProducerBufferSize <= 0)
@@ -417,10 +447,21 @@ namespace Akka.Streams.Dsl
         /// </summary>
         private int DemandThreshold { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public Outlet<T> Out { get; } = new Outlet<T>("MergeHub.out");
-        
+
+        /// <summary>
+        /// TBD
+        /// </summary>
         public override SourceShape<T> Shape { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="inheritedAttributes">TBD</param>
+        /// <returns>TBD</returns>
         public override ILogicAndMaterializedValue<Sink<T, NotUsed>> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
         {
             var idCounter = new AtomicCounterLong();
@@ -454,11 +495,13 @@ namespace Akka.Streams.Dsl
         /// materializations of the <see cref="Source{TOut,TMat}"/> will see the same (failure or completion) state. <see cref="Source{TOut,TMat}"/>s that are
         /// cancelled are simply removed from the dynamic set of consumers.
         /// </summary>
+        /// <typeparam name="T">TBD</typeparam>
         /// <param name="bufferSize">
         /// Buffer size used by the producer. Gives an upper bound on how "far" from each other two
         /// concurrent consumers can be in terms of element. If this buffer is full, the producer
         /// is backpressured. Must be a power of two and less than 4096.
         /// </param>
+        /// <returns>TBD</returns>
         public static Sink<T, Source<T, NotUsed>> Sink<T>(int bufferSize)
             => Dsl.Sink.FromGraph(new BroadcastHub<T>(bufferSize));
 
@@ -478,12 +521,15 @@ namespace Akka.Streams.Dsl
         /// materializations of the <see cref="Source{TOut,TMat}"/> will see the same (failure or completion) state. <see cref="Source{TOut,TMat}"/>s that are
         /// cancelled are simply removed from the dynamic set of consumers.
         /// </summary>
+        /// <typeparam name="T">TBD</typeparam>
+        /// <returns>TBD</returns>
         public static Sink<T, Source<T, NotUsed>> Sink<T>() => Sink<T>(256);
     }
 
     /// <summary>
     /// INTERNAL API
     /// </summary>
+    /// <typeparam name="T">TBD</typeparam>
     internal class BroadcastHub<T> : GraphStageWithMaterializedValue<SinkShape<T>, Source<T, NotUsed>>
     {
         #region internal classes
@@ -858,7 +904,7 @@ namespace Akka.Streams.Dsl
             /// Send a wakeup signal to all the Consumers at a certain wheel index. Note, this needs the actual index,
             /// which is offset modulo (bufferSize + 1).
             /// </summary>
-            /// <param name="index"></param>
+            /// <param name="index">TBD</param>
             private void WakeupIndex(int index) 
                 => _consumerWheel[index].ForEach(c => c.Callback(Wakeup.Instance));
 
@@ -908,7 +954,7 @@ namespace Akka.Streams.Dsl
                 private readonly HubSourceLogic _stage;
                 private readonly long _id;
                 private int _untilNextAdvanceSignal;
-                private bool _initialized;
+                private bool _offsetInitialized;
                 private Action<IHubEvent> _hubCallback;
 
                 // We need to track our last offset that we published to the Hub. The reason is, that for efficiency reasons,
@@ -936,12 +982,21 @@ namespace Akka.Streams.Dsl
                         if (result.IsSuccess)
                         {
                             _hubCallback = result.Value;
+                            if(IsAvailable(_stage.Out) && _offsetInitialized)
+                                OnPull();
                             _hubCallback(RegistrationPending.Instance);
                         }
                         else
                             FailStage(result.Exception);
                     };
 
+                    /*
+                     * Note that there is a potential race here. First we add ourselves to the pending registrations, then
+                     * we send RegistrationPending. However, another downstream might have triggered our registration by its
+                     * own RegistrationPending message, since we are in the list already.
+                     * This means we might receive an onCommand(Initialize(offset)) *before* onHubReady fires so it is important
+                     * to only serve elements after both offsetInitialized = true and hubCallback is not null.
+                     */
                     while (true)
                     {
                         var state = _stage._hubLogic.State.Value;
@@ -976,7 +1031,7 @@ namespace Akka.Streams.Dsl
 
                 public override void OnPull()
                 {
-                    if (_initialized)
+                    if (_offsetInitialized && _hubCallback != null)
                     {
                         var element = _stage._hubLogic.Poll(_offset);
 
@@ -1024,15 +1079,12 @@ namespace Akka.Streams.Dsl
                     }
                     else
                     {
-                        var intialize = e as Initialize;
-                        if (intialize != null)
-                        {
-                            _initialized = true;
-                            _previousPublishedOffset = intialize.Offset;
-                            _offset = intialize.Offset;
-                            if(IsAvailable(_stage.Out))
-                                OnPull();
-                        }
+                        var intialize = (Initialize)e;
+                        _offsetInitialized = true;
+                        _previousPublishedOffset = intialize.Offset;
+                        _offset = intialize.Offset;
+                        if (IsAvailable(_stage.Out) && _hubCallback != null)
+                            OnPull();
                     }
                 }
             }
@@ -1059,6 +1111,14 @@ namespace Akka.Streams.Dsl
         private readonly int _mask;
         private readonly int _wheelMask;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="bufferSize">TBD</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown when either the specified <paramref name="bufferSize"/>
+        /// is less than or equal to zero, is greater than 4095, or is not a power of two.
+        /// </exception>
         public BroadcastHub(int bufferSize)
         {
             if (bufferSize <= 0)
@@ -1083,8 +1143,16 @@ namespace Akka.Streams.Dsl
 
         private Inlet<T> In { get; } = new Inlet<T>("BroadcastHub.in");
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public override SinkShape<T> Shape { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="inheritedAttributes">TBD</param>
+        /// <returns>TBD</returns>
         public override ILogicAndMaterializedValue<Source<T, NotUsed>> CreateLogicAndMaterializedValue(Attributes inheritedAttributes)
         {
             var idCounter = new AtomicCounterLong();

@@ -22,11 +22,17 @@ namespace Akka.Configuration.Hocon
         private int _index;
         private readonly Stack<int> _indexStack = new Stack<int>();
 
+        /// <summary>
+        /// Adds the current index to the tokenizer's bookkeeping stack.
+        /// </summary>
         public void Push()
         {
             _indexStack.Push(_index);
         }
 
+        /// <summary>
+        /// Removes an index from the tokenizer's bookkeeping stack. 
+        /// </summary>
         public void Pop()
         {
             _index = _indexStack.Pop();
@@ -448,11 +454,19 @@ namespace Akka.Configuration.Hocon
             return (!EoF && !IsWhitespace() && !IsStartOfComment() && !NotInUnquotedKey.Contains(Peek()));
         }
 
+        /// <summary>
+        /// Determines whether the current token is whitespace.
+        /// </summary>
+        /// <returns><c>true</c> if token is whitespace; otherwise, <c>false</c>.</returns>
         public bool IsWhitespace()
         {
             return char.IsWhiteSpace(Peek());
         }
 
+        /// <summary>
+        /// Determines whether the current token is whitespace or a comment.
+        /// </summary>
+        /// <returns><c>true</c> if token is whitespace or a comment; otherwise, <c>false</c>.</returns>
         public bool IsWhitespaceOrComment()
         {
             return IsWhitespace() || IsStartOfComment();
@@ -525,8 +539,11 @@ namespace Akka.Configuration.Hocon
             return Token.Key(sb.ToString());
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// TBD
+        /// </summary>
         /// <exception cref="FormatException">This exception is thrown if an unknown escape code is encountered.</exception>
+        /// <returns>TBD</returns>
         public Token PullInclude()
         {
             Take("include".Length);
@@ -567,6 +584,10 @@ namespace Akka.Configuration.Hocon
             }
         }
 
+        /// <summary>
+        /// Determines whether the current token is the start of a comment.
+        /// </summary>
+        /// <returns><c>true</c> if token is the start of a comment; otherwise, <c>false</c>.</returns>
         public bool IsStartOfComment()
         {
             return (Matches("#", "//"));
@@ -627,8 +648,11 @@ namespace Akka.Configuration.Hocon
             return Matches("${");
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// Determines whether the current token is the start of an include directive.
+        /// </summary>
         /// <exception cref="FormatException">This exception is thrown if an unknown escape code is encountered.</exception>
+        /// <returns><c>true</c> if token is the start of an include directive; otherwise, <c>false</c>.</returns>
         public bool IsInclude()
         {
             Push();

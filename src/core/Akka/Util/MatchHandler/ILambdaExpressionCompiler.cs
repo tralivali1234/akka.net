@@ -11,7 +11,10 @@ using System.Reflection.Emit;
 
 namespace Akka.Tools.MatchHandler
 {
-    public interface ILambdaExpressionCompiler
+    /// <summary>
+    /// TBD
+    /// </summary>
+    internal interface ILambdaExpressionCompiler
     {
         /// <summary>
         /// Produces a delegate that represents the lambda expression.

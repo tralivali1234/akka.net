@@ -166,6 +166,11 @@ namespace Akka.Routing
             return new Router(new SmallestMailboxRoutingLogic());
         }
 
+        /// <summary>
+        /// Used by the <see cref="RoutedActorCell" /> to determine the initial number of routees.
+        /// </summary>
+        /// <param name="system">The actor system that owns this router.</param>
+        /// <returns>The number of routees associated with this pool.</returns>
         public override int GetNrOfInstances(ActorSystem system)
         {
             return NrOfInstances;

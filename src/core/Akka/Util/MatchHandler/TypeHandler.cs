@@ -11,7 +11,10 @@ using System.Linq;
 
 namespace Akka.Tools.MatchHandler
 {
-    public class TypeHandler
+    /// <summary>
+    /// TBD
+    /// </summary>
+    internal class TypeHandler
     {
         private readonly Type _handlesType;
         private readonly List<PredicateAndHandler> _handlers = new List<PredicateAndHandler>();
@@ -19,6 +22,7 @@ namespace Akka.Tools.MatchHandler
         /// <summary>
         /// Initializes a new instance of the <see cref="TypeHandler"/> class.
         /// </summary>
+        /// <param name="handlesType">TBD</param>
         /// <exception cref="ArgumentNullException">
         /// This exception is thrown if the given <paramref name="handlesType"/> is undefined.
         /// </exception>
@@ -28,9 +32,19 @@ namespace Akka.Tools.MatchHandler
             _handlesType = handlesType;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public Type HandlesType { get { return _handlesType; } }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public List<PredicateAndHandler> Handlers { get { return _handlers; } }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <returns>TBD</returns>
         public IEnumerable<Argument> GetArguments()
         {
             return _handlers.SelectMany(h => h.Arguments);

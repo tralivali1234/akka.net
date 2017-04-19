@@ -9,7 +9,10 @@ using System;
 
 namespace Akka.Tools.MatchHandler
 {
-    public interface IPartialActionBuilder
+    /// <summary>
+    /// TBD
+    /// </summary>
+    internal interface IPartialActionBuilder
     {
         /// <summary>
         /// Builds the specified delegate and arguments to a <see cref="PartialAction{T}"/>

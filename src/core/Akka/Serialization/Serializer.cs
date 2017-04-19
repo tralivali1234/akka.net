@@ -8,6 +8,7 @@
 using System;
 using System.Linq;
 using Akka.Actor;
+using Akka.Util;
 
 namespace Akka.Serialization
 {
@@ -72,7 +73,7 @@ namespace Akka.Serialization
         /// </summary>
         /// <param name="address">The address to use when serializing local ActorRef´s</param>
         /// <param name="obj">The object to serialize</param>
-        /// <returns></returns>
+        /// <returns>TBD</returns>
         public byte[] ToBinaryWithAddress(Address address, object obj)
         {
             return Serialization.SerializeWithTransport(system, address, () => ToBinary(obj));
@@ -87,47 +88,60 @@ namespace Akka.Serialization
         public abstract object FromBinary(byte[] bytes, Type type);
 
         /// <summary>
-        /// Utility to be used by implementors to create a manifest from the type.
-        /// The manifest is used to look up the type on deserialization.
-        /// Returns the type qualified name including namespace and assembly, but not assembly version.
+        /// Deserializes a byte array into an object.
         /// </summary>
-        /// <remarks>
-        /// See <see cref="Type.GetType(string)"/> for details on how a type is looked up
-        /// from a name. In particular, if the (partial) assembly name is not included
-        /// only the assembly calling <see cref="Type.GetType(string)"/> is searched.
-        /// If the (partial) assembly name is included, it searches in the specified assembly.
-        /// </remarks>
-        /// <param name="type"></param>
-        /// <returns></returns>
-        protected static string TypeQualifiedNameForManifest(Type type)
-        {
-            return type == null ? string.Empty : string.Format("{0},{1}", type.FullName, type.Assembly.GetName().Name);
-        }
+        /// <param name="bytes">The array containing the serialized object</param>
+        /// <returns>The object contained in the array</returns>
+        public T FromBinary<T>(byte[] bytes) => (T)FromBinary(bytes, typeof(T));
     }
 
+    /// <summary>
+    /// TBD
+    /// </summary>
     public abstract class SerializerWithStringManifest : Serializer
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SerializerWithStringManifest"/> class.
+        /// </summary>
+        /// <param name="system">The actor system to associate with this serializer.</param>
         protected SerializerWithStringManifest(ExtendedActorSystem system) : base(system)
         {
         }
 
+        /// <summary>
+        /// Returns whether this serializer needs a manifest in the fromBinary method
+        /// </summary>
         public sealed override bool IncludeManifest { get { return true; } }
 
+        /// <summary>
+        /// Deserializes a byte array into an object of type <paramref name="type" />.
+        /// </summary>
+        /// <param name="bytes">The array containing the serialized object</param>
+        /// <param name="type">The type of object contained in the array</param>
+        /// <returns>The object contained in the array</returns>
         public sealed override object FromBinary(byte[] bytes, Type type)
         {
-            var manifest = TypeQualifiedNameForManifest(type);
+            var manifest = type.TypeQualifiedName();
             return FromBinary(bytes, manifest);
         }
 
         /// <summary>
-        /// Produces an object from an array of bytes, with an optional type-hint.
+        /// Deserializes a byte array into an object using an optional <paramref name="manifest"/> (type hint).
         /// </summary>
-        public abstract object FromBinary(byte[] binary, string manifest);
+        /// <param name="bytes">The array containing the serialized object</param>
+        /// <param name="manifest">The type hint used to deserialize the object contained in the array.</param>
+        /// <returns>The object contained in the array</returns>
+        public abstract object FromBinary(byte[] bytes, string manifest);
 
         /// <summary>
-        /// Return the manifest (type hint) that will be provided in the fromBinary method.
-        /// Return <see cref="string.Empty"/> if not needed.
+        /// Returns the manifest (type hint) that will be provided in the <see cref="FromBinary(byte[],System.Type)"/> method.
+        /// 
+        /// <note>
+        /// This method returns <see cref="String.Empty"/> if a manifest is not needed.
+        /// </note>
         /// </summary>
+        /// <param name="o">The object for which the manifest is needed.</param>
+        /// <returns>The manifest needed for the deserialization of the specified <paramref name="o"/>.</returns>
         public abstract string Manifest(object o);
     }
 
@@ -136,12 +150,20 @@ namespace Akka.Serialization
     /// </summary>
     public static class SerializerIdentifierHelper
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
         public const string SerializationIdentifiers = "akka.actor.serialization-identifiers";
 
-        /// <summary></summary>
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="type">TBD</param>
+        /// <param name="system">TBD</param>
         /// <exception cref="ArgumentException">
         /// This exception is thrown if the system couldn't find the given serializer <paramref name="type"/> id in the configuration.
         /// </exception>
+        /// <returns>TBD</returns>
         public static int GetSerializerIdentifierFromConfig(Type type, ExtendedActorSystem system)
         {
             var config = system.Settings.Config.GetConfig(SerializationIdentifiers);

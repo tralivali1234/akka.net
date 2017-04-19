@@ -1,11 +1,4 @@
-﻿//-----------------------------------------------------------------------
-// <copyright file="Helios.Concurrency.DedicatedThreadPool.cs" company="Akka.NET Project">
-//     Copyright (C) 2009-2016 Lightbend Inc. <http://www.lightbend.com>
-//     Copyright (C) 2013-2016 Akka.NET project <https://github.com/akkadotnet/akka.net>
-// </copyright>
-//-----------------------------------------------------------------------
-
-/*
+﻿/*
  * Copyright 2015 Roger Alsing, Aaron Stannard
  * Helios.DedicatedThreadPool - https://github.com/helios-io/DedicatedThreadPool
  */
@@ -39,6 +32,15 @@ namespace Helios.Concurrency
         /// </summary>
         public const ThreadType DefaultThreadType = ThreadType.Background;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="numThreads">TBD</param>
+        /// <param name="name">TBD</param>
+        /// <param name="deadlockTimeout">TBD</param>
+        /// <param name="apartmentState">TBD</param>
+        /// <param name="exceptionHandler">TBD</param>
+        /// <param name="threadMaxStackSize">TBD</param>
         public DedicatedThreadPoolSettings(int numThreads,
                                            string name = null,
                                            TimeSpan? deadlockTimeout = null,
@@ -51,6 +53,13 @@ namespace Helios.Concurrency
         /// <summary>
         /// Initializes a new instance of the <see cref="DedicatedThreadPoolSettings"/> class.
         /// </summary>
+        /// <param name="numThreads">TBD</param>
+        /// <param name="threadType">TBD</param>
+        /// <param name="name">TBD</param>
+        /// <param name="deadlockTimeout">TBD</param>
+        /// <param name="apartmentState">TBD</param>
+        /// <param name="exceptionHandler">TBD</param>
+        /// <param name="threadMaxStackSize">TBD</param>
         /// <exception cref="ArgumentOutOfRangeException">
         /// This exception is thrown if the given <paramref name="deadlockTimeout"/> is set to less than 1ms.
         /// It can also be thrown if the given <paramref name="numThreads"/> is set to less than one.
@@ -100,8 +109,14 @@ namespace Helios.Concurrency
         /// </summary>
         public TimeSpan? DeadlockTimeout { get; private set; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public string Name { get; private set; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public Action<Exception> ExceptionHandler { get; private set; }
 
         /// <summary>
@@ -128,11 +143,19 @@ namespace Helios.Concurrency
 
         private readonly DedicatedThreadPool _pool;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="pool">TBD</param>
         public DedicatedThreadPoolTaskScheduler(DedicatedThreadPool pool)
         {
             _pool = pool;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="task">TBD</param>
         protected override void QueueTask(Task task)
         {
             lock (_tasks)
@@ -143,6 +166,11 @@ namespace Helios.Concurrency
             EnsureWorkerRequested();
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="task">TBD</param>
+        /// <param name="taskWasPreviouslyQueued">TBD</param>
         protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
         {
             //current thread isn't running any tasks, can't execute inline
@@ -157,6 +185,11 @@ namespace Helios.Concurrency
             return TryExecuteTask(task);
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="task">TBD</param>
+        /// <returns>TBD</returns>
         protected override bool TryDequeue(Task task)
         {
             lock (_tasks) return _tasks.Remove(task);
@@ -171,10 +204,13 @@ namespace Helios.Concurrency
             get { return _pool.Settings.NumThreads; }
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// TBD
+        /// </summary>
         /// <exception cref="NotSupportedException">
         /// This exception is thrown if can't ensure a thread-safe return of the list of tasks.
         /// </exception>
+        /// <returns>TBD</returns>
         protected override IEnumerable<Task> GetScheduledTasks()
         {
             var lockTaken = false;
@@ -264,6 +300,10 @@ namespace Helios.Concurrency
     /// </summary>
     internal sealed class DedicatedThreadPool : IDisposable
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="settings">TBD</param>
         public DedicatedThreadPool(DedicatedThreadPoolSettings settings)
         {
             _workQueue = new ThreadPoolWorkQueue();
@@ -276,15 +316,21 @@ namespace Helios.Concurrency
             // try to keep {settings.NumThreads} active threads.
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public DedicatedThreadPoolSettings Settings { get; private set; }
 
         private readonly ThreadPoolWorkQueue _workQueue;
         private readonly PoolWorker[] _workers;
 
-        /// <summary></summary>
+        /// <summary>
+        /// TBD
+        /// </summary>
         /// <exception cref="ArgumentNullException">
         /// This exception is thrown if the given <paramref name="work"/> item is undefined.
         /// </exception>
+        /// <returns>TBD</returns>
         public bool QueueUserWorkItem(Action work)
         {
             if (work == null)
@@ -293,16 +339,26 @@ namespace Helios.Concurrency
             return _workQueue.TryAdd(work);
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public void Dispose()
         {
             _workQueue.CompleteAdding();
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public void WaitForThreadsExit()
         {
             WaitForThreadsExit(Timeout.InfiniteTimeSpan);
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="timeout">TBD</param>
         public void WaitForThreadsExit(TimeSpan timeout)
         {
             Task.WaitAll(_workers.Select(worker => worker.ThreadExit).ToArray(), timeout);
@@ -383,8 +439,8 @@ namespace Helios.Concurrency
 
             public bool TryAdd(Action work)
             {
-                // If TryAdd returns true, it's garanteed the work item will be executed.
-                // If it returns false, it's also garanteed the work item won't be executed.
+                // If TryAdd returns true, it's guaranteed the work item will be executed.
+                // If it returns false, it's also guaranteed the work item won't be executed.
 
                 if (IsAddingCompleted)
                     return false;
@@ -449,7 +505,7 @@ namespace Helios.Concurrency
             {
                 // There is a double counter here (_outstandingRequest and _semaphore)
                 // Unfair semaphore does not support value bigger than short.MaxValue,
-                // tring to Release more than short.MaxValue could fail miserably.
+                // trying to Release more than short.MaxValue could fail miserably.
 
                 // The _outstandingRequest counter ensure that we only request a
                 // maximum of {ProcessorCount} to the semaphore.
@@ -516,7 +572,7 @@ namespace Helios.Concurrency
                 [FieldOffset(0)]
                 public short Spinners;
 
-                //how much of the semaphore's count is availble to spinners?
+                //how much of the semaphore's count is available to spinners?
                 [FieldOffset(2)]
                 public short CountForSpinners;
 

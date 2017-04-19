@@ -7,7 +7,10 @@
 
 namespace Akka.Tools.MatchHandler
 {
-    public enum HandlerKind
+    /// <summary>
+    /// TBD
+    /// </summary>
+    internal enum HandlerKind
     {
         /// <summary>The handler is a Action&lt;T&gt;</summary>
         Action,

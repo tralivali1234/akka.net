@@ -27,6 +27,12 @@ namespace Akka.Cluster
     /// </summary>
     internal class ClusterActorRefProvider : RemoteActorRefProvider
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="systemName">TBD</param>
+        /// <param name="settings">TBD</param>
+        /// <param name="eventStream">TBD</param>
         public ClusterActorRefProvider(string systemName, Settings settings, EventStream eventStream /*DynamicAccess*/)
             : base(systemName, settings, eventStream)
         {
@@ -35,6 +41,10 @@ namespace Akka.Cluster
             Deployer = new ClusterDeployer(settings);
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="system">TBD</param>
         public override void Init(ActorSystemImpl system)
         {
             //Complete the usual RemoteActorRefProvider initializations - need access to transports and RemoteWatcher before clustering can work
@@ -44,6 +54,11 @@ namespace Akka.Cluster
             Cluster.Get(system);
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="system">TBD</param>
+        /// <returns>TBD</returns>
         protected override IActorRef CreateRemoteWatcher(ActorSystemImpl system)
         {
             // make sure Cluster extension is initialized/loaded from init thread
@@ -56,8 +71,6 @@ namespace Akka.Cluster
                 RemoteSettings.WatchUnreachableReaperInterval,
                 RemoteSettings.WatchHeartbeatExpectedResponseAfter), "remote-watcher");
         }
-
-        
     }
 
     /// <summary>
@@ -108,11 +121,28 @@ namespace Akka.Cluster
     /// </summary>
     internal class ClusterDeployer : RemoteDeployer
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ClusterDeployer"/> class.
+        /// </summary>
+        /// <param name="settings">The settings used to configure the deployer.</param>
         public ClusterDeployer(Settings settings)
             : base(settings)
         {
         }
 
+        /// <summary>
+        /// Creates an actor deployment to the supplied path, <paramref name="key" />, using the supplied configuration, <paramref name="config" />.
+        /// </summary>
+        /// <param name="key">The path used to deploy the actor.</param>
+        /// <param name="config">The configuration used to configure the deployed actor.</param>
+        /// <returns>A configured actor deployment to the given path.</returns>
+        /// <exception cref="ConfigurationException">
+        /// This exception is thrown when the deployment has a scope defined in the configuration
+        /// or the router is configured as a <see cref="RemoteRouterConfig"/>.
+        /// </exception>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown when the router is not configured as either a <see cref="Pool"/> or a <see cref="Group"/>.
+        /// </exception>
         public override Deploy ParseConfig(string key, Config config)
         {
             Config config2 = config;
@@ -133,9 +163,9 @@ namespace Akka.Cluster
                 if (deploy.Config.GetBoolean("cluster.enabled"))
                 {
                     if (deploy.Scope != Deploy.NoScopeGiven)
-                        throw new ConfigurationException(string.Format("Cluster deployment can't be combined with scope [{0}]", deploy.Scope));
+                        throw new ConfigurationException($"Cluster deployment can't be combined with scope [{deploy.Scope}]");
                     if (deploy.RouterConfig is RemoteRouterConfig)
-                        throw new ConfigurationException(string.Format("Cluster deployment can't be combined with [{0}]", deploy.Config));
+                        throw new ConfigurationException($"Cluster deployment can't be combined with [{deploy.Config}]");
 
                     if (deploy.RouterConfig is Pool)
                     {
@@ -153,7 +183,7 @@ namespace Akka.Cluster
                     }
                     else
                     {
-                        throw new ArgumentException(string.Format("Cluster-aware router can only wrap Pool or Group, got [{0}]", deploy.RouterConfig.GetType()));
+                        throw new ArgumentException($"Cluster-aware router can only wrap Pool or Group, got [{deploy.RouterConfig.GetType()}]");
                     }
                 }
                 else
@@ -168,4 +198,3 @@ namespace Akka.Cluster
         }
     }
 }
-

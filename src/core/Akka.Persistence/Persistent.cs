@@ -14,15 +14,9 @@ using Akka.Persistence.Serialization;
 
 namespace Akka.Persistence
 {
-    [Obsolete("DeleteMessages will be removed.")]
-    public interface IWithPersistenceId
-    {
-        /// <summary>
-        /// Identifier of the persistent identity for which messages should be replayed.
-        /// </summary>
-        string PersistenceId { get; }
-    }
-
+    /// <summary>
+    /// TBD
+    /// </summary>
     public interface IPersistentIdentity
     {
         /// <summary>
@@ -54,8 +48,17 @@ namespace Akka.Persistence
     /// </summary>
     public interface IPersistentEnvelope
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
         object Payload { get; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         IActorRef Sender { get; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         int Size { get; }
     }
 
@@ -64,6 +67,11 @@ namespace Akka.Persistence
     /// </summary>
     internal sealed class NonPersistentMessage : IPersistentEnvelope
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="payload">TBD</param>
+        /// <param name="sender">TBD</param>
         public NonPersistentMessage(object payload, IActorRef sender)
         {
             Payload = payload;
@@ -71,31 +79,61 @@ namespace Akka.Persistence
             Size = 1;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public object Payload { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public IActorRef Sender { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public int Size { get; private set; }
     }
 
+    /// <summary>
+    /// TBD
+    /// </summary>
     public sealed class AtomicWrite : IPersistentEnvelope, IMessage
     {
         // This makes the json serializer happy
+        /// <summary>
+        /// TBD
+        /// </summary>
         internal AtomicWrite() {}
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="event">TBD</param>
         public AtomicWrite(IPersistentRepresentation @event) : this(ImmutableArray.Create(@event))
         {
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="payload">TBD</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown when either the specified <paramref name="payload"/> is empty
+        /// or the specified <paramref name="payload"/> contains messages from different <see cref="IPersistentRepresentation.PersistenceId"/>.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        /// This exception is thrown when the specified <paramref name="payload"/> is undefined.
+        /// </exception>
         public AtomicWrite(IImmutableList<IPersistentRepresentation> payload)
         {
             if (payload == null)
-                throw new ArgumentNullException("payload", "Payload of AtomicWrite must not be null.");
+                throw new ArgumentNullException(nameof(payload), "Payload of AtomicWrite must not be null.");
 
             if (payload.Count == 0)
-                throw new ArgumentException("Payload of AtomicWrite must not be empty.", "payload");
+                throw new ArgumentException("Payload of AtomicWrite must not be empty.", nameof(payload));
 
             var firstMessage = payload[0];
             if (payload.Count > 1 && !payload.Skip(1).All(m => m.PersistenceId.Equals(firstMessage.PersistenceId)))
-                throw new ArgumentException(string.Format("AtomicWrite must contain messages for the same persistenceId, yet difference persistenceIds found: {0}.", payload.Select(m => m.PersistenceId).Distinct()), "payload");
+                throw new ArgumentException($"AtomicWrite must contain messages for the same persistenceId, yet difference persistenceIds found: {payload.Select(m => m.PersistenceId).Distinct()}.", nameof(payload));
 
             Payload = payload;
             Sender = ActorRefs.NoSender;
@@ -106,14 +144,33 @@ namespace Akka.Persistence
             HighestSequenceNr = payload[payload.Count -1].SequenceNr;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public object Payload { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public IActorRef Sender { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public int Size { get; private set; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public string PersistenceId { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public long LowestSequenceNr { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public long HighestSequenceNr { get; private set; }
 
+        /// <inheritdoc/>
         public bool Equals(AtomicWrite other)
         {
             return Equals(Payload, other.Payload)
@@ -124,6 +181,7 @@ namespace Akka.Persistence
                    && HighestSequenceNr == other.HighestSequenceNr;
         }
 
+        /// <inheritdoc/>
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
@@ -131,6 +189,7 @@ namespace Akka.Persistence
             return obj is AtomicWrite && Equals((AtomicWrite) obj);
         }
 
+        /// <inheritdoc/>
         public override int GetHashCode()
         {
             unchecked
@@ -145,9 +204,10 @@ namespace Akka.Persistence
             }
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
-            return string.Format("AtomicWrite<pid: {0}, lowSeqNr: {1}, highSeqNr: {2}, size: {3}, sender: {4}>", PersistenceId, LowestSequenceNr, HighestSequenceNr, Size, Sender);
+            return $"AtomicWrite<pid: {PersistenceId}, lowSeqNr: {LowestSequenceNr}, highSeqNr: {HighestSequenceNr}, size: {Size}, sender: {Sender}>";
         }
     }
 
@@ -189,11 +249,15 @@ namespace Akka.Persistence
         /// <summary>
         /// Creates a new persistent message with the specified <paramref name="payload"/>.
         /// </summary>
+        /// <param name="payload">TBD</param>
+        /// <returns>TBD</returns>
         IPersistentRepresentation WithPayload(object payload);
 
         /// <summary>
         /// Creates a new persistent message with the specified <paramref name="manifest"/>.
         /// </summary>
+        /// <param name="manifest">TBD</param>
+        /// <returns>TBD</returns>
         IPersistentRepresentation WithManifest(string manifest);
 
         /// <summary>
@@ -211,14 +275,36 @@ namespace Akka.Persistence
         /// <summary>
         /// Creates a new deep copy of this message.
         /// </summary>
+        /// <param name="sequenceNr">TBD</param>
+        /// <param name="persistenceId">TBD</param>
+        /// <param name="isDeleted">TBD</param>
+        /// <param name="sender">TBD</param>
+        /// <param name="writerGuid">TBD</param>
+        /// <returns>TBD</returns>
         IPersistentRepresentation Update(long sequenceNr, string persistenceId, bool isDeleted, IActorRef sender, string writerGuid);
     }
 
+    /// <summary>
+    /// TBD
+    /// </summary>
     [Serializable]
     public class Persistent : IPersistentRepresentation, IEquatable<IPersistentRepresentation>
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
         public static readonly string Undefined = string.Empty;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="payload">TBD</param>
+        /// <param name="sequenceNr">TBD</param>
+        /// <param name="persistenceId">TBD</param>
+        /// <param name="manifest">TBD</param>
+        /// <param name="isDeleted">TBD</param>
+        /// <param name="sender">TBD</param>
+        /// <param name="writerGuid">TBD</param>
         public Persistent(object payload, long sequenceNr = 0L, string persistenceId = null, string manifest = null, bool isDeleted = false, IActorRef sender = null, string writerGuid = null)
         {
             Payload = payload;
@@ -230,19 +316,50 @@ namespace Akka.Persistence
             WriterGuid = writerGuid ?? Undefined;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public object Payload { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public string Manifest { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public string PersistenceId { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public long SequenceNr { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public bool IsDeleted { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public IActorRef Sender { get; private set; }
+        /// <summary>
+        /// TBD
+        /// </summary>
         public string WriterGuid { get; private set; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="payload">TBD</param>
+        /// <returns>TBD</returns>
         public IPersistentRepresentation WithPayload(object payload)
         {
             return new Persistent(payload, sequenceNr: SequenceNr, persistenceId: PersistenceId, manifest: Manifest, isDeleted: IsDeleted, sender: Sender, writerGuid: WriterGuid);
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="manifest">TBD</param>
+        /// <returns>TBD</returns>
         public IPersistentRepresentation WithManifest(string manifest)
         {
             return Manifest == manifest ?
@@ -250,11 +367,21 @@ namespace Akka.Persistence
                 new Persistent(payload: Payload, sequenceNr: SequenceNr, persistenceId: PersistenceId, manifest: manifest, isDeleted: IsDeleted, sender: Sender, writerGuid: WriterGuid);
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="sequenceNr">TBD</param>
+        /// <param name="persistenceId">TBD</param>
+        /// <param name="isDeleted">TBD</param>
+        /// <param name="sender">TBD</param>
+        /// <param name="writerGuid">TBD</param>
+        /// <returns>TBD</returns>
         public IPersistentRepresentation Update(long sequenceNr, string persistenceId, bool isDeleted, IActorRef sender, string writerGuid)
         {
             return new Persistent(payload: Payload, sequenceNr: sequenceNr, persistenceId: persistenceId, manifest: Manifest, isDeleted: isDeleted, sender: sender, writerGuid: writerGuid);
         }
 
+        /// <inheritdoc/>
         public bool Equals(IPersistentRepresentation other)
         {
             if (other == null) return false;
@@ -269,11 +396,13 @@ namespace Akka.Persistence
                    && string.Equals(WriterGuid, other.WriterGuid);
         }
 
+        /// <inheritdoc/>
         public override bool Equals(object obj)
         {
             return Equals(obj as IPersistentRepresentation);
         }
 
+        /// <inheritdoc/>
         public bool Equals(Persistent other)
         {
             return Equals(Payload, other.Payload)
@@ -285,6 +414,7 @@ namespace Akka.Persistence
                    && string.Equals(WriterGuid, other.WriterGuid);
         }
 
+        /// <inheritdoc/>
         public override int GetHashCode()
         {
             unchecked
@@ -300,10 +430,10 @@ namespace Akka.Persistence
             }
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
-            return string.Format("Persistent<pid: {0}, seqNr: {1}, deleted: {2}, manifest: {3}, sender: {4}, payload: {5}, writerGuid: {6}>", PersistenceId, SequenceNr, IsDeleted, Manifest, Sender, Payload, WriterGuid);
+            return $"Persistent<pid: {PersistenceId}, seqNr: {SequenceNr}, deleted: {IsDeleted}, manifest: {Manifest}, sender: {Sender}, payload: {Payload}, writerGuid: {WriterGuid}>";
         }
     }
 }
-

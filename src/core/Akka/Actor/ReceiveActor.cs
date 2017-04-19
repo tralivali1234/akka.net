@@ -14,7 +14,9 @@ using Akka.Tools.MatchHandler;
 
 namespace Akka.Actor
 {
-
+    /// <summary>
+    /// TBD
+    /// </summary>
     public abstract class ReceiveActor : UntypedActor, IInitializableActor
     {
         private bool _shouldUnhandle = true;
@@ -22,6 +24,9 @@ namespace Akka.Actor
         private PartialAction<object> _partialReceive = _ => false;
         private bool _hasBeenInitialized;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         protected ReceiveActor()
         {
             PrepareConfigureMessageHandlers();
@@ -57,9 +62,14 @@ namespace Akka.Actor
             _matchHandlerBuilders.Push(new MatchBuilder(CachedMatchCompiler<object>.Instance));
         }
 
-        //Seal the method so that implementors cannot use it. They should only use Receive and Become
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="message">TBD</param>
         protected sealed override void OnReceive(object message)
         {
+            //Seal the method so that implementors cannot use it. They should only use Receive and Become
+
             ExecutePartialMessageHandler(message, _partialReceive);
         }
 
@@ -93,27 +103,12 @@ namespace Akka.Actor
             base.BecomeStacked(m => ExecutePartialMessageHandler(m, newHandler));
         }
 
-        [Obsolete("Use Become or BecomeStacked instead. This method will be removed in future versions")]
-        protected void Become(Action configure, bool discardOld = true)
-        {
-            if(discardOld)
-                Become(configure);
-            else
-                BecomeStacked(configure);
-        }
-
         private PartialAction<object> CreateNewHandler(Action configure)
         {
             PrepareConfigureMessageHandlers();
             configure();
             var newHandler = BuildNewReceiveHandler(_matchHandlerBuilders.Pop());
             return newHandler;
-        }
-
-        [Obsolete("Use ReceiveAsync instead. This method will be removed in future versions")]
-        protected void Receive<T>(Func<T, Task> handler)
-        {
-            ReceiveAsync(handler);
         }
 
         private Action<T> WrapAsyncHandler<T>(Func<T, Task> asyncHandler)
@@ -235,7 +230,6 @@ namespace Akka.Actor
             Receive<T>(handler, shouldHandle);
         }
 
-
         /// <summary>
         /// Registers a handler for incoming messages of the specified <paramref name="messageType"/>.
         /// If <paramref name="shouldHandle"/>!=<c>null</c> then it must return true before a message is passed to <paramref name="handler"/>.
@@ -252,7 +246,6 @@ namespace Akka.Actor
             EnsureMayConfigureMessageHandlers();
             _matchHandlerBuilders.Peek().Match(messageType, handler, shouldHandle);
         }
-
 
         /// <summary>
         /// Registers a handler for incoming messages of the specified <paramref name="messageType"/>.

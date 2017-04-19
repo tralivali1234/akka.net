@@ -81,7 +81,7 @@ namespace Akka.Routing
 
             if (_routees.IsNullOrEmpty())
             {
-                tcs.SetResult(new Status.Failure(new AskTimeoutException("Timeout due to no routess")));
+                tcs.SetResult(new Status.Failure(new AskTimeoutException("Timeout due to no routees")));
             }
             else
             {
@@ -197,6 +197,11 @@ namespace Akka.Routing
             return new Router(new ScatterGatherFirstCompletedRoutingLogic(Within));
         }
 
+        /// <summary>
+        /// Used by the <see cref="RoutedActorCell" /> to determine the initial number of routees.
+        /// </summary>
+        /// <param name="system">The actor system that owns this router.</param>
+        /// <returns>The number of routees associated with this pool.</returns>
         public override int GetNrOfInstances(ActorSystem system)
         {
             return NrOfInstances;
@@ -406,7 +411,15 @@ namespace Akka.Routing
 
         }
 
-        [Obsolete("Use new ScatterGatherFirstCompletedGroup(actorRefs.Select(c => c.Path.ToString()), within) instead")]
+        /// <summary>
+        /// Obsolete. Use <see cref="ScatterGatherFirstCompletedGroup(IEnumerable{System.String}, TimeSpan)"/> instead.
+        /// <code>
+        /// new ScatterGatherFirstCompletedGroup(actorRefs.Select(c => c.Path.ToString()), within)
+        /// </code>
+        /// </summary>
+        /// <param name="routees">N/A</param>
+        /// <param name="within">N/A</param>
+        [Obsolete("Use new ScatterGatherFirstCompletedGroup(actorRefs.Select(c => c.Path.ToString()), within) instead [1.1.0]")]
         public ScatterGatherFirstCompletedGroup(IEnumerable<IActorRef> routees, TimeSpan within)
             : this(routees.Select(c => c.Path.ToString()), within, Dispatchers.DefaultDispatcherId)
         {
@@ -438,6 +451,11 @@ namespace Akka.Routing
             return new Router(new ScatterGatherFirstCompletedRoutingLogic(Within));
         }
 
+        /// <summary>
+        /// Retrieves the actor paths used by this router during routee selection.
+        /// </summary>
+        /// <param name="system">The actor system that owns this router.</param>
+        /// <returns>An enumeration of actor paths used during routee selection</returns>
         public override IEnumerable<string> GetPaths(ActorSystem system)
         {
             return Paths;

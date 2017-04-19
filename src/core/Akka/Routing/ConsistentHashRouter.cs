@@ -262,16 +262,31 @@ namespace Akka.Routing
     /// </summary>
     internal sealed class ConsistentRoutee
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="routee">TBD</param>
+        /// <param name="selfAddress">TBD</param>
         public ConsistentRoutee(Routee routee, Address selfAddress)
         {
             SelfAddress = selfAddress;
             Routee = routee;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public Routee Routee { get; private set; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public Address SelfAddress { get; private set; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <returns>TBD</returns>
         public override string ToString()
         {
             if (Routee is ActorRefRoutee)
@@ -399,6 +414,11 @@ namespace Akka.Routing
                     _hashMapping ?? ConsistentHashingRouter.EmptyConsistentHashMapping));
         }
 
+        /// <summary>
+        /// Used by the <see cref="RoutedActorCell" /> to determine the initial number of routees.
+        /// </summary>
+        /// <param name="system">The actor system that owns this router.</param>
+        /// <returns>The number of routees associated with this pool.</returns>
         public override int GetNrOfInstances(ActorSystem system)
         {
             return this.NrOfInstances;
@@ -638,7 +658,14 @@ namespace Akka.Routing
         {
         }
 
-        [Obsolete("Use new ConsistentHashingGroup(actorRefs.Select(c => c.Path.ToString())) instead")]
+        /// <summary>
+        /// Obsolete. Use <see cref="ConsistentHashingGroup(IEnumerable{System.String})"/> instead.
+        /// <code>
+        /// new ConsistentHashingGroup(actorRefs.Select(c => c.Path.ToString()))
+        /// </code>
+        /// </summary>
+        /// <param name="routees">N/A</param>
+        [Obsolete("Use new ConsistentHashingGroup(actorRefs.Select(c => c.Path.ToString())) instead [1.1.0]")]
         public ConsistentHashingGroup(IEnumerable<IActorRef> routees)
             : this(routees.Select(c => c.Path.ToString()))
         {
@@ -679,6 +706,11 @@ namespace Akka.Routing
         /// </summary>
         public int VirtualNodesFactor { get; private set; }
 
+        /// <summary>
+        /// Retrieves the actor paths used by this router during routee selection.
+        /// </summary>
+        /// <param name="system">The actor system that owns this router.</param>
+        /// <returns>An enumeration of actor paths used during routee selection</returns>
         public override IEnumerable<string> GetPaths(ActorSystem system)
         {
             return Paths;

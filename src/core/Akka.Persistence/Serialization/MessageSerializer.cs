@@ -11,22 +11,36 @@ using System.Collections.Immutable;
 using System.Linq;
 using Akka.Actor;
 using Akka.Serialization;
+using Akka.Util;
 using Google.ProtocolBuffers;
 
 namespace Akka.Persistence.Serialization
 {
+    /// <summary>
+    /// TBD
+    /// </summary>
     public interface IMessage { }
 
+    /// <summary>
+    /// TBD
+    /// </summary>
     public class MessageSerializer : Serializer
     {
         private Information _transportInformation;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MessageSerializer"/> class.
+        /// </summary>
+        /// <param name="system">The actor system to associate with this serializer.</param>
         public MessageSerializer(ExtendedActorSystem system)
             : base(system)
         {
         }
 
-        public Information TransportInformation
+        /// <summary>
+        /// TBD
+        /// </summary>
+        internal Information TransportInformation
         {
             get
             {
@@ -34,11 +48,26 @@ namespace Akka.Persistence.Serialization
             }
         }
 
+        /// <summary>
+        /// Returns whether this serializer needs a manifest in the fromBinary method
+        /// </summary>
         public override bool IncludeManifest
         {
             get { return true; }
         }
 
+        /// <summary>
+        /// Serializes the given object into a byte array
+        /// </summary>
+        /// <param name="obj">The object to serialize</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown when the <see cref="MessageSerializer"/> cannot serialize the specified <paramref name="obj"/>.
+        /// The specified <paramref name="obj" /> must be of one of the following types:
+        /// <see cref="IPersistentRepresentation"/> | <see cref="AtomicWrite"/> | <see cref="AtLeastOnceDeliverySnapshot"/>.
+        /// </exception>
+        /// <returns>
+        /// A byte array containing the serialized object
+        /// </returns>
         public override byte[] ToBinary(object obj)
         {
             if (obj is IPersistentRepresentation) return PersistentToProto(obj as IPersistentRepresentation).Build().ToByteArray();
@@ -46,9 +75,22 @@ namespace Akka.Persistence.Serialization
             if (obj is AtLeastOnceDeliverySnapshot) return SnapshotToProto(obj as AtLeastOnceDeliverySnapshot).Build().ToByteArray();
             // TODO StateChangeEvent
 
-            throw new ArgumentException(typeof(MessageSerializer) + " cannot serialize object of type " + obj.GetType());
+            throw new ArgumentException($"{typeof(MessageSerializer)} cannot serialize object of type {obj.GetType()}", nameof(obj));
         }
 
+        /// <summary>
+        /// Deserializes a byte array into an object of type <paramref name="type" />.
+        /// </summary>
+        /// <param name="bytes">The array containing the serialized object</param>
+        /// <param name="type">The type of object contained in the array</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown when the <see cref="MessageSerializer"/> cannot deserialize the specified <paramref name="type"/>.
+        /// The specified <paramref name="type" /> must be of one of the following types:
+        /// <see cref="IPersistentRepresentation"/> | <see cref="AtomicWrite"/> | <see cref="AtLeastOnceDeliverySnapshot"/>.
+        /// </exception>
+        /// <returns>
+        /// The object contained in the array
+        /// </returns>
         public override object FromBinary(byte[] bytes, Type type)
         {
             if (type == null || type == typeof(Persistent) || type == typeof(IPersistentRepresentation)) return PersistentMessageFrom(bytes);
@@ -57,7 +99,7 @@ namespace Akka.Persistence.Serialization
             // TODO StateChangeEvent
             // TODO PersistentStateChangeEvent
 
-            throw new ArgumentException(typeof(MessageSerializer) + " cannot deserialize object of type " + type);
+            throw new ArgumentException($"{typeof(MessageSerializer)} cannot deserialize object of type {type}", nameof(type));
         }
 
         private AtLeastOnceDeliverySnapshot SnapshotFrom(byte[] bytes)
@@ -169,7 +211,7 @@ namespace Akka.Persistence.Serialization
                     builder.SetPayloadManifest(ByteString.CopyFromUtf8(manifest));
             }
             else if (serializer.IncludeManifest)
-                builder.SetPayloadManifest(ByteString.CopyFromUtf8(TypeQualifiedNameForManifest(payload.GetType())));
+                builder.SetPayloadManifest(ByteString.CopyFromUtf8(payload.GetType().TypeQualifiedName()));
 
             var bytes = serializer.ToBinary(payload);
 
@@ -202,4 +244,3 @@ namespace Akka.Persistence.Serialization
         }
     }
 }
-

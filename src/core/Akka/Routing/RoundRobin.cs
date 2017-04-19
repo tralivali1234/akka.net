@@ -138,6 +138,11 @@ namespace Akka.Routing
             return new Router(new RoundRobinRoutingLogic());
         }
 
+        /// <summary>
+        /// Used by the <see cref="RoutedActorCell"/> to determine the initial number of routees.
+        /// </summary>
+        /// <param name="sys">The actor system that owns this router.</param>
+        /// <returns>The number of routees associated with this pool.</returns>
         public override int GetNrOfInstances(ActorSystem sys)
         {
             return NrOfInstances;
@@ -332,7 +337,11 @@ namespace Akka.Routing
         {
         }
 
-        [Obsolete("Use RoundRobinGroup constructor with IEnumerable<string> parameter")]
+        /// <summary>
+        /// Obsolete. Use <see cref="RoundRobinGroup(IEnumerable{System.String})"/> instead.
+        /// </summary>
+        /// <param name="routees">N/A</param>
+        [Obsolete("Use RoundRobinGroup constructor with IEnumerable<string> parameter [1.1.0]")]
         public RoundRobinGroup(IEnumerable<IActorRef> routees)
             : this(routees.Select(c => c.Path.ToString()))
         {
@@ -348,6 +357,11 @@ namespace Akka.Routing
         {
         }
 
+        /// <summary>
+        /// Retrieves the actor paths used by this router during routee selection.
+        /// </summary>
+        /// <param name="system">The actor system that owns this router.</param>
+        /// <returns>An enumeration of actor paths used during routee selection</returns>
         public override IEnumerable<string> GetPaths(ActorSystem system)
         {
             return Paths;

@@ -20,13 +20,21 @@ namespace Akka.Util
         private long _lastUpdate;
         private long _availableTokens;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TokenBucket"/> class.
+        /// </summary>
+        /// <param name="capacity">TBD</param>
+        /// <param name="ticksBetweenTokens">TBD</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown when either the specified <paramref name="capacity"/> is less than zero
+        /// or the specified <paramref name="ticksBetweenTokens"/> is less than or equal to zero.
+        /// </exception>
         protected TokenBucket(long capacity, long ticksBetweenTokens)
         {
             if(capacity<0)
-                throw new ArgumentException("Capacity must be non-negativ", nameof(capacity));
+                throw new ArgumentException("Capacity must be non-negative", nameof(capacity));
             if (ticksBetweenTokens <= 0)
-                throw new ArgumentException("Time between tokens must be larger than zero ticks.",
-                    nameof(ticksBetweenTokens));
+                throw new ArgumentException("Time between tokens must be larger than zero ticks.", nameof(ticksBetweenTokens));
             
             _capacity = capacity;
             _ticksBetweenTokens = ticksBetweenTokens;
@@ -58,10 +66,14 @@ namespace Akka.Util
         /// calls. 
         /// </summary>
         /// <param name="cost">How many tokens the element costs. Can be larger than the capacity of the bucket.</param>
+        /// <exception cref="ArgumentException">
+        /// This exception is thrown when the specified <paramref name="cost"/> is less than zero.
+        /// </exception>
+        /// <returns>TBD</returns>
         public long Offer(long cost)
         {
             if(cost < 0)
-                throw new ArgumentException("Cost must be non-negativ", nameof(cost));
+                throw new ArgumentException("Cost must be non-negative", nameof(cost));
 
             var now = CurrentTime;
             var timeElapsed = now - _lastUpdate;
@@ -109,10 +121,19 @@ namespace Akka.Util
     /// </summary>
     public sealed class TickTimeTokenBucket : TokenBucket
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="capacity">TBD</param>
+        /// <param name="period">TBD</param>
+        /// <returns>TBD</returns>
         public TickTimeTokenBucket(long capacity, long period) : base(capacity, period)
         {
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public override long CurrentTime => DateTime.Now.Ticks;
     }
 }

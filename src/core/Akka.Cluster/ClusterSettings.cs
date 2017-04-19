@@ -14,11 +14,19 @@ using Akka.Dispatch;
 
 namespace Akka.Cluster
 {
+    /// <summary>
+    /// This class represents configuration information used when setting up a cluster.
+    /// </summary>
     public sealed class ClusterSettings
     {
         readonly Config _failureDetectorConfig;
         readonly string _useDispatcher;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ClusterSettings"/> class.
+        /// </summary>
+        /// <param name="config">The configuration to use when setting up the cluster.</param>
+        /// <param name="systemName">The name of the actor system hosting the cluster.</param>
         public ClusterSettings(Config config, string systemName)
         {
             //TODO: Requiring!
@@ -70,62 +78,151 @@ namespace Akka.Cluster
                 DowningProviderType = typeof(AutoDowning);
             else
                 DowningProviderType = typeof(NoDowning);
+
+            RunCoordinatedShutdownWhenDown = cc.GetBoolean("run-coordinated-shutdown-when-down");
         }
 
+        /// <summary>
+        /// Determine whether to log <see cref="Akka.Event.LogLevel.InfoLevel"/> messages.
+        /// </summary>
         public bool LogInfo { get; }
 
+        /// <summary>
+        /// The configuration for the underlying failure detector used by Akka.Cluster.
+        /// </summary>
         public Config FailureDetectorConfig => _failureDetectorConfig;
 
+        /// <summary>
+        /// The fully qualified type name of the failure detector class that will be used.
+        /// </summary>
         public string FailureDetectorImplementationClass { get; }
 
+        /// <summary>
+        /// The amount of time between when heartbeat messages are sent.
+        /// </summary>
         public TimeSpan HeartbeatInterval { get; }
 
+        /// <summary>
+        /// The amount of time we expect a heartbeat response after first contact with a new node.
+        /// </summary>
         public TimeSpan HeartbeatExpectedResponseAfter { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public int MonitoredByNrOfMembers { get; }
 
+        /// <summary>
+        /// A list of designated seed nodes for the cluster.
+        /// </summary>
         public ImmutableList<Address> SeedNodes { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan SeedNodeTimeout { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan? RetryUnsuccessfulJoinAfter { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan PeriodicTasksInitialDelay { get; }
 
+        /// <summary>
+        /// The amount of time between when gossip messages are sent.
+        /// </summary>
         public TimeSpan GossipInterval { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan GossipTimeToLive { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan LeaderActionsInterval { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan UnreachableNodesReaperInterval { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan? PublishStatsInterval { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan? AutoDownUnreachableAfter { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public ImmutableHashSet<string> Roles { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public double GossipDifferentViewProbability { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public int ReduceGossipDifferentViewProbability { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public string UseDispatcher => _useDispatcher;
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public TimeSpan SchedulerTickDuration { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public int SchedulerTicksPerWheel { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public int MinNrOfMembers { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public ImmutableDictionary<string, int> MinNrOfMembersOfRole { get; }
 
-        [Obsolete("Use Cluster.DowningProvider.DownRemovalMargin")]
+        /// <summary>
+        /// Obsolete. Use <see cref="P:Cluster.DowningProvider.DownRemovalMargin"/>.
+        /// </summary>
+        [Obsolete("Use Cluster.DowningProvider.DownRemovalMargin [1.1.2]")]
         public TimeSpan DownRemovalMargin { get; }
 
+        /// <summary>
+        /// Determine whether or not to log heartbeat message in verbose mode.
+        /// </summary>
         public bool VerboseHeartbeatLogging { get; }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
         public Type DowningProviderType { get; }
+
+        /// <summary>
+        /// Trigger the <see cref="CoordinatedShutdown"/> even if this node was removed by non-graceful
+        /// means, such as being downed.
+        /// </summary>
+        public bool RunCoordinatedShutdownWhenDown { get; }
     }
 }
 

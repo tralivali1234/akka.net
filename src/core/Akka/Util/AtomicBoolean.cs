@@ -25,6 +25,7 @@ namespace Akka.Util
         /// <summary>
         /// Sets the initial value of this <see cref="AtomicBoolean"/> to <paramref name="initialValue"/>.
         /// </summary>
+        /// <param name="initialValue">TBD</param>
         public AtomicBoolean(bool initialValue = false)
         {
             _value = initialValue ? _trueValue : _falseValue;
@@ -50,6 +51,8 @@ namespace Akka.Util
         /// If <see cref="Value"/> equals <paramref name="expected"/>, then set the Value to
         /// <paramref name="newValue"/>.
         /// </summary>
+        /// <param name="expected">TBD</param>
+        /// <param name="newValue">TBD</param>
         /// <returns><c>true</c> if <paramref name="newValue"/> was set</returns>
         public bool CompareAndSet(bool expected, bool newValue)
         {
@@ -71,18 +74,20 @@ namespace Akka.Util
         #region Conversion operators
 
         /// <summary>
-        /// Implicit conversion operator = automatically casts the <see cref="AtomicBoolean"/> to a <see cref="bool"/>
+        /// Performs an implicit conversion from <see cref="AtomicBoolean"/> to <see cref="System.Boolean"/>.
         /// </summary>
-        public static implicit operator bool(AtomicBoolean boolean)
+        /// <param name="atomicBoolean">The boolean to convert</param>
+        /// <returns>The result of the conversion.</returns>
+        public static implicit operator bool(AtomicBoolean atomicBoolean)
         {
-            return boolean.Value;
+            return atomicBoolean.Value;
         }
 
         /// <summary>
-        /// Implicit conversion operator = allows us to cast any bool directly into a <see cref="AtomicBoolean"/> instance.
+        /// Performs an implicit conversion from <see cref="System.Boolean"/> to <see cref="AtomicBoolean"/>.
         /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
+        /// <param name="value">The boolean to convert</param>
+        /// <returns>The result of the conversion.</returns>
         public static implicit operator AtomicBoolean(bool value)
         {
             return new AtomicBoolean(value);

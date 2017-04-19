@@ -16,17 +16,30 @@ namespace Akka.Actor
     /// </summary>
     public abstract class UntypedActor : ActorBase
     {
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="message">TBD</param>
+        /// <returns>TBD</returns>
         protected sealed override bool Receive(object message)
         {
             OnReceive(message);
             return true;
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="action">TBD</param>
         protected void RunTask(Action action)
         {
             ActorTaskScheduler.RunTask(action);
         }
 
+        /// <summary>
+        /// TBD
+        /// </summary>
+        /// <param name="action">TBD</param>
         protected void RunTask(Func<Task> action)
         {
             ActorTaskScheduler.RunTask(action);
@@ -38,15 +51,6 @@ namespace Akka.Actor
         /// </summary>
         /// <param name="message">The message.</param>
         protected abstract void OnReceive(object message);
-
-        [Obsolete("Use Become or BecomeStacked instead. This method will be removed in future versions")]
-        protected void Become(UntypedReceive receive, bool discardOld = true)
-        {
-            if (discardOld)
-                Context.Become(receive);
-            else
-                Context.BecomeStacked(receive);
-        }
 
         /// <summary>
         /// Changes the actor's behavior and replaces the current receive handler with the specified handler.
@@ -69,7 +73,10 @@ namespace Akka.Actor
             Context.BecomeStacked(receive);
         }
 
-        protected static new IUntypedActorContext Context { get { return (IUntypedActorContext) ActorBase.Context; } }
+        /// <summary>
+        /// TBD
+        /// </summary>
+        protected new static IUntypedActorContext Context { get { return (IUntypedActorContext) ActorBase.Context; } }
     }
 }
 
